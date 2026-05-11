@@ -17,6 +17,7 @@ export type Product = {
   work?: string;
   color?: string;
   specs?: { label: string; value: string }[];
+  brand?: string;
 };
 
 export type Collection = {
@@ -24,6 +25,8 @@ export type Collection = {
   title: string;
   image: string;
   description?: string;
+  brand?: string;
+  bannerImage?: string;
 };
 
 export type Brand = {

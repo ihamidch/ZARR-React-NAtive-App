@@ -9,10 +9,12 @@ type Props = {
   product: Product;
   width?: number;
   onPress?: () => void;
+  brand?: string;
 };
 
-export const ProductCard = ({ product, width = 170, onPress }: Props) => {
+export const ProductCard = ({ product, width = 170, onPress, brand }: Props) => {
   const { title, price, originalPrice, discountPercent, image } = product;
+  const brandLabel = brand ?? product.brand;
   return (
     <Pressable style={[styles.card, { width }]} onPress={onPress}>
       <View style={styles.imageWrap}>
@@ -26,6 +28,11 @@ export const ProductCard = ({ product, width = 170, onPress }: Props) => {
           <Ionicons name="heart-outline" size={16} color={colors.text} />
         </Pressable>
       </View>
+      {brandLabel ? (
+        <Text style={styles.brand} numberOfLines={1}>
+          {brandLabel}
+        </Text>
+      ) : null}
       <Text style={styles.title} numberOfLines={2}>
         {title}
       </Text>
@@ -85,10 +92,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.92)',
   },
+  brand: {
+    fontFamily: 'PlayfairDisplay_700Bold_Italic',
+    fontSize: 12,
+    color: colors.text,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    marginTop: spacing.sm,
+  },
   title: {
     ...typography.smallMed,
     color: colors.text,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
     marginBottom: spacing.xs,
     minHeight: 36,
     lineHeight: 17,

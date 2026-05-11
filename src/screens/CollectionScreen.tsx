@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   FlatList,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -12,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ProductCard } from '../components/ProductCard';
+import { Footer } from '../components/Footer';
 import {
   allProducts,
   getCollectionById,
@@ -137,37 +139,41 @@ export const CollectionScreen = ({
     setPriceFilter('All');
   };
 
-  return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+  const brandWordmark = collection?.brand;
+  const bannerUri = collection?.bannerImage ?? collection?.image;
+  const sortLabel = SORTS.find((s) => s.id === sort)?.label ?? 'Featured';
 
-      <View style={styles.topBar}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.iconBtn}>
-          <Ionicons name="chevron-back" size={22} color={colors.text} />
-        </Pressable>
-        <View style={styles.titleWrap}>
-          <Text style={styles.title}>{title}</Text>
-          <View style={styles.underline} />
-        </View>
-        <View style={styles.topRight}>
-          <Pressable style={styles.iconBtn}>
-            <Ionicons name="search-outline" size={22} color={colors.text} />
-          </Pressable>
-          <Pressable style={styles.iconBtn}>
-            <Ionicons name="bag-outline" size={22} color={colors.text} />
-          </Pressable>
-        </View>
-      </View>
-
-      {collection?.description ? (
-        <Text style={styles.description}>{collection.description}</Text>
+  const ListHeader = (
+    <View>
+      {bannerUri ? (
+        <Image
+          source={{ uri: bannerUri }}
+          style={styles.banner}
+          resizeMode="cover"
+        />
       ) : null}
 
-      {/* Filter + Sort bar — matches ZARR's "Filter Products" / count / Sort by */}
+      <View style={styles.brandHeader}>
+        {brandWordmark ? (
+          <>
+            <Text style={styles.brandWordmark}>{brandWordmark}</Text>
+            <View style={styles.brandUnderline} />
+          </>
+        ) : (
+          <>
+            <Text style={styles.brandWordmark}>{title}</Text>
+            <View style={styles.brandUnderline} />
+          </>
+        )}
+        {collection?.description ? (
+          <Text style={styles.description}>{collection.description}</Text>
+        ) : null}
+      </View>
+
       <View style={styles.filterBar}>
         <Pressable style={styles.filterBtn} onPress={() => setFilterOpen(true)}>
-          <Ionicons name="options-outline" size={16} color={colors.text} />
-          <Text style={styles.filterBtnText}>Filter Products</Text>
+          <Text style={styles.filterBtnText}>Filter</Text>
+          <Ionicons name="chevron-down" size={14} color={colors.text} />
           {activeFilterCount > 0 ? (
             <View style={styles.filterCountBadge}>
               <Text style={styles.filterCountBadgeText}>
@@ -183,54 +189,84 @@ export const CollectionScreen = ({
         >
           <Text style={styles.sortLabel}>Sort by:</Text>
           <Text style={styles.sortText} numberOfLines={1}>
-            {SORTS.find((s) => s.id === sort)?.label}
+            {sortLabel}
           </Text>
           <Ionicons name="chevron-down" size={14} color={colors.text} />
         </Pressable>
       </View>
 
-      <View style={styles.countBar}>
-        <Text style={styles.countText}>
-          {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
-        </Text>
-        {activeFilterCount > 0 ? (
+      {activeFilterCount > 0 ? (
+        <View style={styles.countBar}>
+          <Text style={styles.countText}>
+            {filteredProducts.length}{' '}
+            {filteredProducts.length === 1 ? 'product' : 'products'}
+          </Text>
           <Pressable onPress={clearAllFilters}>
             <Text style={styles.clearText}>Clear all</Text>
           </Pressable>
-        ) : null}
-      </View>
-
-      {filteredProducts.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="cube-outline" size={42} color={colors.textMuted} />
-          <Text style={styles.emptyText}>
-            No products match your filters.
-          </Text>
-          <Pressable onPress={clearAllFilters} style={styles.emptyCta}>
-            <Text style={styles.emptyCtaText}>CLEAR FILTERS</Text>
-          </Pressable>
         </View>
       ) : (
-        <FlatList
-          data={filteredProducts}
-          keyExtractor={(p) => p.id}
-          numColumns={2}
-          columnWrapperStyle={styles.gridRow}
-          contentContainerStyle={styles.gridContent}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <View style={styles.gridItem}>
-              <ProductCard
-                product={item}
-                width={undefined as unknown as number}
-                onPress={() =>
-                  navigation.navigate('ProductDetail', { productId: item.id })
-                }
-              />
-            </View>
-          )}
-        />
+        <View style={{ height: spacing.sm }} />
       )}
+    </View>
+  );
+
+  const ListEmpty = (
+    <View style={styles.empty}>
+      <Ionicons name="cube-outline" size={42} color={colors.textMuted} />
+      <Text style={styles.emptyText}>No products match your filters.</Text>
+      <Pressable onPress={clearAllFilters} style={styles.emptyCta}>
+        <Text style={styles.emptyCtaText}>CLEAR FILTERS</Text>
+      </Pressable>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+
+      <View style={styles.topBar}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.iconBtn}>
+          <Ionicons name="chevron-back" size={22} color={colors.text} />
+        </Pressable>
+        <View style={styles.titleWrap}>
+          <Text style={styles.title}>ZARR</Text>
+          <View style={styles.underline} />
+        </View>
+        <View style={styles.topRight}>
+          <Pressable style={styles.iconBtn}>
+            <Ionicons name="search-outline" size={22} color={colors.text} />
+          </Pressable>
+          <Pressable style={styles.iconBtn}>
+            <Ionicons name="bag-outline" size={22} color={colors.text} />
+          </Pressable>
+        </View>
+      </View>
+
+      <FlatList
+        data={filteredProducts}
+        keyExtractor={(p) => p.id}
+        numColumns={2}
+        columnWrapperStyle={styles.gridRow}
+        contentContainerStyle={styles.gridContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={ListEmpty}
+        ListFooterComponent={<Footer />}
+        renderItem={({ item }) => (
+          <View style={styles.gridItem}>
+            <ProductCard
+              product={item}
+              width={undefined as unknown as number}
+              brand={brandWordmark}
+              onPress={() =>
+                navigation.navigate('ProductDetail', { productId: item.id })
+              }
+            />
+          </View>
+        )}
+      />
+
 
       {/* Sort modal */}
       <Modal
@@ -411,19 +447,42 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   topRight: { flexDirection: 'row' },
+  banner: {
+    width: '100%',
+    height: 220,
+    backgroundColor: colors.surfaceAlt,
+  },
+  brandHeader: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
+  },
+  brandWordmark: {
+    fontFamily: 'PlayfairDisplay_700Bold_Italic',
+    fontSize: 34,
+    letterSpacing: 4,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  brandUnderline: {
+    width: 44,
+    height: 1.5,
+    backgroundColor: colors.text,
+    marginTop: spacing.sm,
+  },
   description: {
     ...typography.small,
     color: colors.textMuted,
-    paddingHorizontal: spacing.lg,
     textAlign: 'center',
     lineHeight: 19,
-    marginBottom: spacing.sm,
+    marginTop: spacing.md,
   },
   filterBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
@@ -431,6 +490,7 @@ const styles = StyleSheet.create({
   filterBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.xs,
     flex: 1,
   },
@@ -452,19 +512,18 @@ const styles = StyleSheet.create({
   },
   divider: {
     width: 1,
-    height: 20,
+    height: 22,
     backgroundColor: colors.border,
-    marginHorizontal: spacing.sm,
   },
   sortBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
   },
   sortLabel: { ...typography.small, color: colors.textMuted },
-  sortText: { ...typography.smallMed, color: colors.text, maxWidth: 130 },
+  sortText: { ...typography.smallMed, color: colors.text, maxWidth: 140 },
   countBar: {
     flexDirection: 'row',
     alignItems: 'center',

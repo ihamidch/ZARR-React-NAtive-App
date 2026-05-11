@@ -35,32 +35,44 @@ export const featuredCollections: Collection[] = [
   {
     id: 'la-toscana',
     title: 'La Toscana',
+    brand: 'MUSHQ',
     image:
       'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=900&q=80',
+    bannerImage:
+      'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1600&q=80',
     description:
       'A romantic edit inspired by Tuscan summers — soft silhouettes, sun-washed tones, and effortless drape.',
   },
   {
     id: 'mahay-spring',
     title: "Mahay Spring '26",
+    brand: 'KHAADI',
     image:
       'https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=900&q=80',
+    bannerImage:
+      'https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=1600&q=80',
     description:
       'Fresh florals and airy lawn pieces — the lightweight everyday wardrobe for spring.',
   },
   {
     id: 'luxury-lawn',
     title: "Luxury Lawn '26",
+    brand: 'SANA SAFINAZ',
     image:
       'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=900&q=80',
+    bannerImage:
+      'https://images.unsplash.com/photo-1542295669297-4d352b042bca?auto=format&fit=crop&w=1600&q=80',
     description:
       'Premium lawn fabrics with hand-embroidered detailing for elevated daily wear.',
   },
   {
     id: 'muzlin',
     title: "Muzlin '26",
+    brand: 'SAPPHIRE',
     image:
       'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80',
+    bannerImage:
+      'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1600&q=80',
     description:
       'Woven muzlin three-piece suits with refined embellishment for festive occasions.',
   },

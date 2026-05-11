@@ -13,12 +13,24 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { allProducts, formatPrice, getProductById } from '../data';
+import {
+  allProducts,
+  formatPrice,
+  getCollectionById,
+  getProductById,
+} from '../data';
 import { ProductCard } from '../components/ProductCard';
+import { Footer } from '../components/Footer';
 import type { ProductDetailScreenProps } from '../types/navigation';
 import { colors, radius, spacing, typography } from '../theme';
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
+
+const skuFromProductId = (id: string) => {
+  const digits = id.replace(/\D/g, '').padStart(3, '0').slice(0, 3);
+  const letters = id.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 3) || 'ZAR';
+  return `N${digits}-002-${letters}`;
+};
 
 export const ProductDetailScreen = ({
   route,
@@ -27,20 +39,35 @@ export const ProductDetailScreen = ({
   const { productId } = route.params;
   const product = getProductById(productId);
 
+  const collection = product?.collectionId
+    ? getCollectionById(product.collectionId)
+    : undefined;
+  const brand = product?.brand ?? collection?.brand;
+
   const [activeImage, setActiveImage] = useState(0);
-  const [selectedSize, setSelectedSize] = useState<string | undefined>();
+  const [selectedSize, setSelectedSize] = useState<string | undefined>(
+    product?.sizes?.[0],
+  );
   const [selectedColor, setSelectedColor] = useState<string | undefined>(
     product?.colors?.[0]?.name,
   );
   const [qty, setQty] = useState(1);
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
-  const [showSpecs, setShowSpecs] = useState(true);
+  const [wishlisted, setWishlisted] = useState(false);
 
   const related = useMemo(() => {
     if (!product) return [];
     return allProducts
       .filter((p) => p.category === product.category && p.id !== product.id)
       .slice(0, 8);
+  }, [product]);
+
+  const recentlyViewed = useMemo(() => {
+    if (!product) return [];
+    return allProducts
+      .filter((p) => p.id !== product.id)
+      .slice(-6)
+      .reverse();
   }, [product]);
 
   if (!product) {
@@ -58,6 +85,8 @@ export const ProductDetailScreen = ({
 
   const gallery = product.gallery ?? [product.image];
   const sizes = product.sizes ?? [];
+  const sku = skuFromProductId(product.id);
+  const skuSuffix = sizes[0]?.toLowerCase().includes('piece') ? '(3-PCS)' : '';
 
   const onAddToCart = () => {
     if (sizes.length > 0 && !selectedSize) {
@@ -75,6 +104,14 @@ export const ProductDetailScreen = ({
     );
   };
 
+  const onBuyNow = () => {
+    if (sizes.length > 0 && !selectedSize) {
+      Alert.alert('Please select a size', 'Choose a size to continue.');
+      return;
+    }
+    Alert.alert('Buy it now', `Proceed to checkout for ${product.title}`);
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
@@ -84,11 +121,12 @@ export const ProductDetailScreen = ({
           <Ionicons name="chevron-back" size={22} color={colors.text} />
         </Pressable>
         <View style={styles.topTitleWrap}>
-          <Text style={styles.brand}>ZARR</Text>
+          <Text style={styles.brandLogo}>ZARR</Text>
+          <View style={styles.brandLogoUnderline} />
         </View>
         <View style={styles.topRight}>
           <Pressable style={styles.iconBtn}>
-            <Ionicons name="share-outline" size={22} color={colors.text} />
+            <Ionicons name="person-outline" size={22} color={colors.text} />
           </Pressable>
           <Pressable style={styles.iconBtn}>
             <Ionicons name="bag-outline" size={22} color={colors.text} />
@@ -97,7 +135,7 @@ export const ProductDetailScreen = ({
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Gallery */}
+        {/* Single hero image (swipeable gallery if multiple) */}
         <View>
           <ScrollView
             horizontal
@@ -113,6 +151,16 @@ export const ProductDetailScreen = ({
             {gallery.map((uri, i) => (
               <View key={i} style={styles.heroImageWrap}>
                 <Image source={{ uri }} style={styles.heroImage} />
+                <Pressable
+                  style={styles.wishlistFloat}
+                  onPress={() => setWishlisted((v) => !v)}
+                >
+                  <Ionicons
+                    name={wishlisted ? 'heart' : 'heart-outline'}
+                    size={20}
+                    color={wishlisted ? colors.accent : colors.text}
+                  />
+                </Pressable>
                 {product.discountPercent ? (
                   <View style={styles.discountBadge}>
                     <Text style={styles.discountBadgeText}>
@@ -120,28 +168,28 @@ export const ProductDetailScreen = ({
                     </Text>
                   </View>
                 ) : null}
-                <Pressable style={styles.wishlistFloat}>
-                  <Ionicons
-                    name="heart-outline"
-                    size={20}
-                    color={colors.text}
-                  />
-                </Pressable>
               </View>
             ))}
           </ScrollView>
-          <View style={styles.dotsRow}>
-            {gallery.map((_, i) => (
-              <View
-                key={i}
-                style={[styles.dot, i === activeImage && styles.dotActive]}
-              />
-            ))}
-          </View>
+          {gallery.length > 1 ? (
+            <View style={styles.dotsRow}>
+              {gallery.map((_, i) => (
+                <View
+                  key={i}
+                  style={[styles.dot, i === activeImage && styles.dotActive]}
+                />
+              ))}
+            </View>
+          ) : null}
         </View>
 
-        {/* Title + price block */}
+        {/* Product info block */}
         <View style={styles.infoBlock}>
+          {brand ? <Text style={styles.brandWordmark}>{brand}</Text> : null}
+          <Text style={styles.sku}>
+            {sku}
+            {skuSuffix ? ` ${skuSuffix}` : ''}
+          </Text>
           <Text style={styles.title}>{product.title}</Text>
 
           <View style={styles.priceRow}>
@@ -171,7 +219,6 @@ export const ProductDetailScreen = ({
             <Text style={styles.taxLine}>Tax included.</Text>
           ) : null}
 
-          {/* Color */}
           {product.colors && product.colors.length > 0 ? (
             <View style={styles.section}>
               <Text style={styles.label}>
@@ -199,124 +246,76 @@ export const ProductDetailScreen = ({
             </View>
           ) : null}
 
-          {/* Size — dropdown like ZARR ('Please select') */}
           {sizes.length > 0 ? (
             <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.label}>SIZE:</Text>
-                <Pressable>
-                  <Text style={styles.sizeGuide}>Size guide</Text>
-                </Pressable>
-              </View>
+              <Text style={styles.label}>SIZE</Text>
               <Pressable
                 style={styles.sizeSelect}
                 onPress={() => setSizeModalOpen(true)}
               >
-                <Text
-                  style={[
-                    styles.sizeSelectText,
-                    !selectedSize && styles.sizeSelectPlaceholder,
-                  ]}
-                >
-                  {selectedSize ?? `Please select ${sizes[0]}`}
+                <Text style={styles.sizeSelectText}>
+                  {(selectedSize ?? sizes[0]).toUpperCase()}
                 </Text>
                 <Ionicons name="chevron-down" size={18} color={colors.text} />
               </Pressable>
             </View>
           ) : null}
 
-          {/* Quantity */}
           <View style={styles.section}>
-            <Text style={styles.label}>QUANTITY:</Text>
-            <View style={styles.qtyRow}>
-              <Pressable
-                style={styles.qtyBtn}
-                onPress={() => setQty((q) => Math.max(1, q - 1))}
-              >
-                <Ionicons name="remove" size={16} color={colors.text} />
-              </Pressable>
-              <Text style={styles.qtyValue}>{qty}</Text>
-              <Pressable
-                style={styles.qtyBtn}
-                onPress={() => setQty((q) => q + 1)}
-              >
-                <Ionicons name="add" size={16} color={colors.text} />
-              </Pressable>
-            </View>
-          </View>
-
-          {/* Specs table — exact ZARR layout */}
-          {product.specs && product.specs.length > 0 ? (
-            <View style={styles.specsWrap}>
-              <Pressable
-                style={styles.specsHeader}
-                onPress={() => setShowSpecs((v) => !v)}
-              >
-                <Text style={styles.specsTitle}>PRODUCT DETAILS</Text>
-                <Ionicons
-                  name={showSpecs ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.text}
-                />
-              </Pressable>
-              {showSpecs ? (
-                <View style={styles.specsTable}>
-                  {product.specs.map((s, i) => (
-                    <View
-                      key={s.label}
-                      style={[
-                        styles.specRow,
-                        i === product.specs!.length - 1 && styles.specRowLast,
-                      ]}
-                    >
-                      <Text style={styles.specLabel}>{s.label}:</Text>
-                      <Text style={styles.specValue}>{s.value}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-          ) : null}
-
-          {/* Description */}
-          {product.description ? (
-            <View style={styles.section}>
-              <Text style={styles.label}>DESCRIPTION</Text>
-              <Text style={styles.description}>{product.description}</Text>
-            </View>
-          ) : null}
-
-          {/* Perks */}
-          <View style={styles.perks}>
-            {[
-              {
-                icon: 'cube-outline' as const,
-                label: 'Free shipping over Rs. 5,000',
-              },
-              {
-                icon: 'refresh-outline' as const,
-                label: 'Easy 7-day returns',
-              },
-              {
-                icon: 'shield-checkmark-outline' as const,
-                label: 'Authenticity guaranteed',
-              },
-              {
-                icon: 'cash-outline' as const,
-                label: 'Cash on delivery available',
-              },
-            ].map((p) => (
-              <View key={p.label} style={styles.perkRow}>
-                <Ionicons name={p.icon} size={18} color={colors.text} />
-                <Text style={styles.perkText}>{p.label}</Text>
+            <View style={styles.qtyAndAddRow}>
+              <View style={styles.qtyBox}>
+                <Pressable
+                  style={styles.qtyBtn}
+                  onPress={() => setQty((q) => Math.max(1, q - 1))}
+                  hitSlop={8}
+                >
+                  <Ionicons name="remove" size={16} color={colors.text} />
+                </Pressable>
+                <Text style={styles.qtyValue}>{qty}</Text>
+                <Pressable
+                  style={styles.qtyBtn}
+                  onPress={() => setQty((q) => q + 1)}
+                  hitSlop={8}
+                >
+                  <Ionicons name="add" size={16} color={colors.text} />
+                </Pressable>
               </View>
-            ))}
+              <Pressable
+                style={styles.addBtnInline}
+                onPress={onAddToCart}
+              >
+                <Text style={styles.addBtnInlineText}>ADD TO CART</Text>
+              </Pressable>
+            </View>
+
+            <Pressable style={styles.buyNowBtn} onPress={onBuyNow}>
+              <Text style={styles.buyNowText}>Buy it now</Text>
+            </Pressable>
           </View>
+
+          {product.description ? (
+            <Text style={styles.description}>{product.description}</Text>
+          ) : null}
+
+          {product.specs && product.specs.length > 0 ? (
+            <View style={styles.specsList}>
+              {product.specs.map((s) => (
+                <View key={s.label} style={styles.specBullet}>
+                  <View style={styles.bulletDot} />
+                  <Text style={styles.specText}>
+                    <Text style={styles.specLabelInline}>{s.label}:</Text>{' '}
+                    {s.value}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
 
         {related.length > 0 ? (
           <View style={styles.relatedWrap}>
-            <Text style={styles.relatedTitle}>You may also like</Text>
+            <Text style={styles.relatedTitle}>More For You</Text>
+            <View style={styles.relatedDivider} />
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -326,7 +325,8 @@ export const ProductDetailScreen = ({
                 <ProductCard
                   key={p.id}
                   product={p}
-                  width={150}
+                  width={160}
+                  brand={brand}
                   onPress={() =>
                     navigation.push('ProductDetail', { productId: p.id })
                   }
@@ -336,20 +336,32 @@ export const ProductDetailScreen = ({
           </View>
         ) : null}
 
-        <View style={{ height: 110 }} />
-      </ScrollView>
+        {recentlyViewed.length > 0 ? (
+          <View style={styles.relatedWrap}>
+            <Text style={styles.relatedTitle}>Recently Viewed</Text>
+            <View style={styles.relatedDivider} />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.relatedRow}
+            >
+              {recentlyViewed.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  width={160}
+                  brand={brand}
+                  onPress={() =>
+                    navigation.push('ProductDetail', { productId: p.id })
+                  }
+                />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
-      {/* Sticky add-to-cart bar */}
-      <View style={styles.bottomBar}>
-        <Pressable style={styles.heartBtnLarge}>
-          <Ionicons name="heart-outline" size={22} color={colors.text} />
-        </Pressable>
-        <Pressable style={styles.addBtn} onPress={onAddToCart}>
-          <Text style={styles.addBtnText}>
-            ADD TO CART · {formatPrice(product.price * qty)}
-          </Text>
-        </Pressable>
-      </View>
+        <Footer />
+      </ScrollView>
 
       {/* Size picker modal */}
       <Modal
@@ -424,11 +436,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   topTitleWrap: { flex: 1, alignItems: 'center' },
-  brand: {
+  brandLogo: {
     fontFamily: 'PlayfairDisplay_700Bold',
     fontSize: 22,
     letterSpacing: 4,
     color: colors.text,
+  },
+  brandLogoUnderline: {
+    width: 28,
+    height: 1.5,
+    backgroundColor: colors.text,
+    marginTop: 3,
   },
   topRight: { flexDirection: 'row' },
   heroImageWrap: {
@@ -476,20 +494,43 @@ const styles = StyleSheet.create({
     backgroundColor: colors.divider,
   },
   dotActive: { backgroundColor: colors.text, width: 18 },
-  infoBlock: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
-  title: {
-    fontFamily: 'PlayfairDisplay_700Bold',
+  infoBlock: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  brandWordmark: {
+    fontFamily: 'PlayfairDisplay_700Bold_Italic',
     fontSize: 22,
     color: colors.text,
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  sku: {
+    ...typography.small,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    letterSpacing: 0.5,
+  },
+  title: {
+    fontFamily: 'PlayfairDisplay_700Bold',
+    fontSize: 18,
+    color: colors.text,
     marginBottom: spacing.sm,
-    lineHeight: 28,
+    lineHeight: 24,
+    textAlign: 'center',
   },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginBottom: 4,
+    marginTop: spacing.sm,
+    marginBottom: 2,
+    justifyContent: 'center',
   },
   price: {
     fontFamily: 'PlayfairDisplay_700Bold',
@@ -515,16 +556,11 @@ const styles = StyleSheet.create({
   taxLine: {
     ...typography.small,
     color: colors.textMuted,
-    marginTop: 2,
+    marginTop: 4,
     marginBottom: spacing.md,
+    textAlign: 'center',
   },
   section: { marginTop: spacing.lg },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
   label: {
     ...typography.tiny,
     color: colors.text,
@@ -537,11 +573,6 @@ const styles = StyleSheet.create({
     textTransform: 'none',
     color: colors.textMuted,
   },
-  sizeGuide: {
-    ...typography.small,
-    color: colors.text,
-    textDecorationLine: 'underline',
-  },
   sizeSelect: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -553,8 +584,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     backgroundColor: colors.white,
   },
-  sizeSelectText: { ...typography.body, color: colors.text },
-  sizeSelectPlaceholder: { color: colors.textMuted },
+  sizeSelectText: {
+    ...typography.smallMed,
+    color: colors.text,
+    letterSpacing: 1,
+  },
   swatchRow: { flexDirection: 'row', gap: spacing.sm },
   swatch: {
     width: 36,
@@ -573,117 +607,121 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
-  qtyBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  qtyAndAddRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  qtyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
     borderWidth: 1,
     borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+  },
+  qtyBtn: {
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
   qtyValue: {
-    ...typography.h3,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 15,
     color: colors.text,
-    minWidth: 24,
+    minWidth: 22,
     textAlign: 'center',
+  },
+  addBtnInline: {
+    flex: 1,
+    height: 48,
+    backgroundColor: colors.text,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtnInlineText: {
+    color: colors.white,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 1.5,
+    fontSize: 12,
+  },
+  buyNowBtn: {
+    marginTop: spacing.md,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.text,
+    alignSelf: 'center',
+  },
+  buyNowText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    color: colors.text,
+    letterSpacing: 0.5,
   },
   description: {
     ...typography.body,
     color: colors.textMuted,
     lineHeight: 22,
-  },
-  perks: {
-    marginTop: spacing.lg,
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    gap: spacing.sm,
-  },
-  perkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  perkText: { ...typography.smallMed, color: colors.text },
-  specsWrap: {
-    marginTop: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-  },
-  specsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-  },
-  specsTitle: { ...typography.tiny, color: colors.text, letterSpacing: 2 },
-  specsTable: { backgroundColor: colors.white },
-  specRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  specRowLast: { borderBottomWidth: 0 },
-  specLabel: {
-    ...typography.smallMed,
-    color: colors.text,
-    flex: 0.4,
-  },
-  specValue: { ...typography.small, color: colors.textMuted, flex: 0.6 },
-  relatedWrap: {
-    marginTop: spacing.lg,
-    paddingVertical: spacing.lg,
-    backgroundColor: colors.surface,
-  },
-  relatedTitle: {
-    fontFamily: 'PlayfairDisplay_700Bold',
-    fontSize: 18,
-    color: colors.text,
-    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xl,
     marginBottom: spacing.md,
   },
-  relatedRow: { paddingHorizontal: spacing.lg, gap: spacing.md },
-  bottomBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
+  specsList: {
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  specBullet: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  bulletDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.text,
+    marginTop: 9,
+  },
+  specText: {
+    ...typography.body,
+    color: colors.text,
+    flex: 1,
+    lineHeight: 22,
+  },
+  specLabelInline: {
+    fontFamily: 'Inter_600SemiBold',
+  },
+  relatedWrap: {
+    marginTop: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
     backgroundColor: colors.background,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-    gap: spacing.md,
   },
-  heartBtnLarge: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+  relatedTitle: {
+    fontFamily: 'PlayfairDisplay_700Bold',
+    fontSize: 22,
+    color: colors.text,
+    paddingHorizontal: spacing.lg,
+    textAlign: 'center',
+    marginTop: spacing.md,
   },
-  addBtn: {
-    flex: 1,
-    height: 50,
+  relatedDivider: {
+    width: 30,
+    height: 1.5,
     backgroundColor: colors.text,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.md,
+    alignSelf: 'center',
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
   },
-  addBtnText: {
-    color: colors.white,
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 1.5,
-    fontSize: 13,
+  relatedRow: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
   },
   notFound: {
     flex: 1,
