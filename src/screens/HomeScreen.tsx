@@ -118,7 +118,10 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
             ]}
             onProductPress={goProduct}
             onSeeAllPress={(tabId) =>
-              goCollection(tabId, tabId === 'women' ? 'Women Sale' : 'Men Sale')
+              goCollection(
+                `${tabId}-sale`,
+                tabId === 'women' ? 'Sale For Her' : 'Sale For Him',
+              )
             }
           />
         </Section>

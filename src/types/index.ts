@@ -12,6 +12,11 @@ export type Product = {
   colors?: { name: string; hex: string }[];
   collectionId?: string;
   inStock?: boolean;
+  taxIncluded?: boolean;
+  fabric?: string;
+  work?: string;
+  color?: string;
+  specs?: { label: string; value: string }[];
 };
 
 export type Collection = {

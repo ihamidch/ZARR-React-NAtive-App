@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StatusBar,
@@ -19,43 +20,122 @@ import {
 import type { CollectionScreenProps } from '../types/navigation';
 import { colors, radius, spacing, typography } from '../theme';
 
-type SortKey = 'featured' | 'priceLow' | 'priceHigh' | 'newest';
+type SortKey =
+  | 'featured'
+  | 'relevant'
+  | 'bestSelling'
+  | 'azA'
+  | 'azZ'
+  | 'priceLow'
+  | 'priceHigh'
+  | 'dateOld'
+  | 'dateNew';
+
 const SORTS: { id: SortKey; label: string }[] = [
   { id: 'featured', label: 'Featured' },
-  { id: 'priceLow', label: 'Price: Low to High' },
-  { id: 'priceHigh', label: 'Price: High to Low' },
-  { id: 'newest', label: 'Newest' },
+  { id: 'relevant', label: 'Most relevant' },
+  { id: 'bestSelling', label: 'Best selling' },
+  { id: 'azA', label: 'Alphabetically, A-Z' },
+  { id: 'azZ', label: 'Alphabetically, Z-A' },
+  { id: 'priceLow', label: 'Price, low to high' },
+  { id: 'priceHigh', label: 'Price, high to low' },
+  { id: 'dateOld', label: 'Date, old to new' },
+  { id: 'dateNew', label: 'Date, new to old' },
 ];
 
-const FILTERS = ['All', 'Women', 'Men', 'On Sale'] as const;
-type Filter = (typeof FILTERS)[number];
+const FILTER_GROUPS = [
+  {
+    id: 'gender',
+    label: 'Category',
+    options: ['All', 'Women', 'Men'],
+  },
+  {
+    id: 'availability',
+    label: 'Availability',
+    options: ['All', 'In stock', 'On sale'],
+  },
+  {
+    id: 'price',
+    label: 'Price',
+    options: ['All', 'Under Rs. 5,000', 'Rs. 5,000 – 15,000', 'Above Rs. 15,000'],
+  },
+];
 
-export const CollectionScreen = ({ route, navigation }: CollectionScreenProps) => {
+export const CollectionScreen = ({
+  route,
+  navigation,
+}: CollectionScreenProps) => {
   const { collectionId, title } = route.params;
   const collection = getCollectionById(collectionId);
   const isCategory = ['women', 'men', 'kids'].includes(collectionId);
 
   const [sort, setSort] = useState<SortKey>('featured');
-  const [filter, setFilter] = useState<Filter>('All');
   const [sortOpen, setSortOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
 
-  const products = useMemo(() => {
+  const [genderFilter, setGenderFilter] = useState<string>('All');
+  const [availabilityFilter, setAvailabilityFilter] = useState<string>('All');
+  const [priceFilter, setPriceFilter] = useState<string>('All');
+
+  const filteredProducts = useMemo(() => {
     let list = isCategory
       ? allProducts.filter((p) =>
           collectionId === 'kids' ? false : p.category === collectionId,
         )
-      : getProductsByCollection(collectionId);
+      : collectionId.endsWith('-sale')
+        ? allProducts.filter((p) => !!p.discountPercent)
+        : getProductsByCollection(collectionId);
 
-    if (filter === 'Women') list = list.filter((p) => p.category === 'women');
-    if (filter === 'Men') list = list.filter((p) => p.category === 'men');
-    if (filter === 'On Sale') list = list.filter((p) => !!p.discountPercent);
+    if (genderFilter === 'Women')
+      list = list.filter((p) => p.category === 'women');
+    if (genderFilter === 'Men')
+      list = list.filter((p) => p.category === 'men');
+
+    if (availabilityFilter === 'On sale')
+      list = list.filter((p) => !!p.discountPercent);
+    if (availabilityFilter === 'In stock')
+      list = list.filter((p) => p.inStock !== false);
+
+    if (priceFilter === 'Under Rs. 5,000')
+      list = list.filter((p) => p.price < 5000);
+    if (priceFilter === 'Rs. 5,000 – 15,000')
+      list = list.filter((p) => p.price >= 5000 && p.price <= 15000);
+    if (priceFilter === 'Above Rs. 15,000')
+      list = list.filter((p) => p.price > 15000);
 
     if (sort === 'priceLow') list = [...list].sort((a, b) => a.price - b.price);
-    if (sort === 'priceHigh') list = [...list].sort((a, b) => b.price - a.price);
-    if (sort === 'newest') list = [...list].reverse();
+    if (sort === 'priceHigh')
+      list = [...list].sort((a, b) => b.price - a.price);
+    if (sort === 'azA')
+      list = [...list].sort((a, b) => a.title.localeCompare(b.title));
+    if (sort === 'azZ')
+      list = [...list].sort((a, b) => b.title.localeCompare(a.title));
+    if (sort === 'dateNew') list = [...list].reverse();
+    if (sort === 'bestSelling')
+      list = [...list].sort(
+        (a, b) => (b.discountPercent ?? 0) - (a.discountPercent ?? 0),
+      );
 
     return list;
-  }, [collectionId, isCategory, filter, sort]);
+  }, [
+    collectionId,
+    isCategory,
+    genderFilter,
+    availabilityFilter,
+    priceFilter,
+    sort,
+  ]);
+
+  const activeFilterCount =
+    (genderFilter !== 'All' ? 1 : 0) +
+    (availabilityFilter !== 'All' ? 1 : 0) +
+    (priceFilter !== 'All' ? 1 : 0);
+
+  const clearAllFilters = () => {
+    setGenderFilter('All');
+    setAvailabilityFilter('All');
+    setPriceFilter('All');
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -69,91 +149,70 @@ export const CollectionScreen = ({ route, navigation }: CollectionScreenProps) =
           <Text style={styles.title}>{title}</Text>
           <View style={styles.underline} />
         </View>
-        <Pressable style={styles.iconBtn}>
-          <Ionicons name="bag-outline" size={22} color={colors.text} />
-        </Pressable>
+        <View style={styles.topRight}>
+          <Pressable style={styles.iconBtn}>
+            <Ionicons name="search-outline" size={22} color={colors.text} />
+          </Pressable>
+          <Pressable style={styles.iconBtn}>
+            <Ionicons name="bag-outline" size={22} color={colors.text} />
+          </Pressable>
+        </View>
       </View>
 
       {collection?.description ? (
         <Text style={styles.description}>{collection.description}</Text>
       ) : null}
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
-        {FILTERS.map((f) => {
-          const active = filter === f;
-          return (
-            <Pressable
-              key={f}
-              style={[styles.filterChip, active && styles.filterChipActive]}
-              onPress={() => setFilter(f)}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  active && styles.filterTextActive,
-                ]}
-              >
-                {f}
+      {/* Filter + Sort bar — matches ZARR's "Filter Products" / count / Sort by */}
+      <View style={styles.filterBar}>
+        <Pressable style={styles.filterBtn} onPress={() => setFilterOpen(true)}>
+          <Ionicons name="options-outline" size={16} color={colors.text} />
+          <Text style={styles.filterBtnText}>Filter Products</Text>
+          {activeFilterCount > 0 ? (
+            <View style={styles.filterCountBadge}>
+              <Text style={styles.filterCountBadgeText}>
+                {activeFilterCount}
               </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      <View style={styles.sortBar}>
-        <Text style={styles.count}>{products.length} items</Text>
+            </View>
+          ) : null}
+        </Pressable>
+        <View style={styles.divider} />
         <Pressable
           style={styles.sortBtn}
           onPress={() => setSortOpen((v) => !v)}
         >
-          <Ionicons name="swap-vertical" size={14} color={colors.text} />
-          <Text style={styles.sortText}>
+          <Text style={styles.sortLabel}>Sort by:</Text>
+          <Text style={styles.sortText} numberOfLines={1}>
             {SORTS.find((s) => s.id === sort)?.label}
           </Text>
+          <Ionicons name="chevron-down" size={14} color={colors.text} />
         </Pressable>
       </View>
 
-      {sortOpen ? (
-        <View style={styles.sortDropdown}>
-          {SORTS.map((s) => (
-            <Pressable
-              key={s.id}
-              style={styles.sortOption}
-              onPress={() => {
-                setSort(s.id);
-                setSortOpen(false);
-              }}
-            >
-              <Text
-                style={[
-                  styles.sortOptionText,
-                  s.id === sort && styles.sortOptionTextActive,
-                ]}
-              >
-                {s.label}
-              </Text>
-              {s.id === sort ? (
-                <Ionicons name="checkmark" size={16} color={colors.text} />
-              ) : null}
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
+      <View style={styles.countBar}>
+        <Text style={styles.countText}>
+          {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
+        </Text>
+        {activeFilterCount > 0 ? (
+          <Pressable onPress={clearAllFilters}>
+            <Text style={styles.clearText}>Clear all</Text>
+          </Pressable>
+        ) : null}
+      </View>
 
-      {products.length === 0 ? (
+      {filteredProducts.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="cube-outline" size={42} color={colors.textMuted} />
           <Text style={styles.emptyText}>
-            No products yet in this collection.
+            No products match your filters.
           </Text>
+          <Pressable onPress={clearAllFilters} style={styles.emptyCta}>
+            <Text style={styles.emptyCtaText}>CLEAR FILTERS</Text>
+          </Pressable>
         </View>
       ) : (
         <FlatList
-          data={products}
+          data={filteredProducts}
           keyExtractor={(p) => p.id}
           numColumns={2}
           columnWrapperStyle={styles.gridRow}
@@ -172,16 +231,163 @@ export const CollectionScreen = ({ route, navigation }: CollectionScreenProps) =
           )}
         />
       )}
+
+      {/* Sort modal */}
+      <Modal
+        visible={sortOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSortOpen(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setSortOpen(false)}
+        >
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Sort by</Text>
+              <Pressable onPress={() => setSortOpen(false)}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </Pressable>
+            </View>
+            <ScrollView>
+              {SORTS.map((s) => {
+                const active = sort === s.id;
+                return (
+                  <Pressable
+                    key={s.id}
+                    style={styles.modalOption}
+                    onPress={() => {
+                      setSort(s.id);
+                      setSortOpen(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.modalOptionText,
+                        active && styles.modalOptionTextActive,
+                      ]}
+                    >
+                      {s.label}
+                    </Text>
+                    {active ? (
+                      <Ionicons name="checkmark" size={20} color={colors.text} />
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Filter modal — bottom sheet with grouped options */}
+      <Modal
+        visible={filterOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFilterOpen(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setFilterOpen(false)}
+        >
+          <Pressable style={styles.modalSheetLarge} onPress={() => {}}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filter Products</Text>
+              <Pressable onPress={() => setFilterOpen(false)}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </Pressable>
+            </View>
+            <ScrollView>
+              <FilterGroup
+                label="Category"
+                value={genderFilter}
+                options={FILTER_GROUPS[0].options}
+                onChange={setGenderFilter}
+              />
+              <FilterGroup
+                label="Availability"
+                value={availabilityFilter}
+                options={FILTER_GROUPS[1].options}
+                onChange={setAvailabilityFilter}
+              />
+              <FilterGroup
+                label="Price"
+                value={priceFilter}
+                options={FILTER_GROUPS[2].options}
+                onChange={setPriceFilter}
+              />
+            </ScrollView>
+            <View style={styles.modalFooter}>
+              <Pressable
+                style={[styles.modalFooterBtn, styles.modalFooterBtnGhost]}
+                onPress={clearAllFilters}
+              >
+                <Text style={styles.modalFooterTextGhost}>CLEAR</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalFooterBtn, styles.modalFooterBtnPrimary]}
+                onPress={() => setFilterOpen(false)}
+              >
+                <Text style={styles.modalFooterTextPrimary}>
+                  SHOW {filteredProducts.length} RESULTS
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };
+
+type FilterGroupProps = {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+};
+
+const FilterGroup = ({ label, value, options, onChange }: FilterGroupProps) => (
+  <View style={styles.filterGroup}>
+    <Text style={styles.filterGroupLabel}>{label}</Text>
+    {options.map((o) => {
+      const active = value === o;
+      return (
+        <Pressable
+          key={o}
+          style={styles.filterOption}
+          onPress={() => onChange(o)}
+        >
+          <View
+            style={[
+              styles.radioOuter,
+              active && styles.radioOuterActive,
+            ]}
+          >
+            {active ? <View style={styles.radioInner} /> : null}
+          </View>
+          <Text
+            style={[
+              styles.filterOptionText,
+              active && styles.filterOptionTextActive,
+            ]}
+          >
+            {o}
+          </Text>
+        </Pressable>
+      );
+    })}
+  </View>
+);
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     height: 56,
   },
   iconBtn: {
@@ -204,6 +410,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
     marginTop: 4,
   },
+  topRight: { flexDirection: 'row' },
   description: {
     ...typography.small,
     color: colors.textMuted,
@@ -212,62 +419,68 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginBottom: spacing.sm,
   },
-  filterRow: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
-  },
-  filterChip: {
-    paddingVertical: 6,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterChipActive: {
-    backgroundColor: colors.text,
-    borderColor: colors.text,
-  },
-  filterText: {
-    ...typography.smallMed,
-    color: colors.text,
-    letterSpacing: 1,
-  },
-  filterTextActive: { color: colors.white },
-  sortBar: {
+  filterBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  count: { ...typography.smallMed, color: colors.textMuted },
-  sortBtn: {
+  filterBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+    flex: 1,
   },
-  sortText: { ...typography.smallMed, color: colors.text },
-  sortDropdown: {
-    backgroundColor: colors.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+  filterBtnText: { ...typography.smallMed, color: colors.text },
+  filterCountBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 5,
+    backgroundColor: colors.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
   },
-  sortOption: {
+  filterCountBadgeText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    color: colors.white,
+  },
+  divider: {
+    width: 1,
+    height: 20,
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.sm,
+  },
+  sortBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    justifyContent: 'flex-end',
+  },
+  sortLabel: { ...typography.small, color: colors.textMuted },
+  sortText: { ...typography.smallMed, color: colors.text, maxWidth: 130 },
+  countBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
-  sortOptionText: { ...typography.body, color: colors.text },
-  sortOptionTextActive: { fontFamily: 'Inter_700Bold' },
+  countText: { ...typography.smallMed, color: colors.textMuted },
+  clearText: {
+    ...typography.small,
+    color: colors.text,
+    textDecorationLine: 'underline',
+  },
   gridContent: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.xs,
     paddingBottom: spacing.xl,
   },
   gridRow: { gap: spacing.md, marginBottom: spacing.md },
@@ -280,4 +493,129 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   emptyText: { ...typography.body, color: colors.textMuted },
+  emptyCta: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.text,
+    borderRadius: radius.pill,
+  },
+  emptyCtaText: {
+    color: colors.white,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 1.5,
+    fontSize: 12,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    paddingTop: spacing.md,
+    maxHeight: '70%',
+  },
+  modalSheetLarge: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  modalTitle: {
+    fontFamily: 'PlayfairDisplay_700Bold',
+    fontSize: 18,
+    color: colors.text,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  modalOptionText: { ...typography.body, color: colors.text },
+  modalOptionTextActive: { fontFamily: 'Inter_700Bold' },
+  filterGroup: { paddingVertical: spacing.md },
+  filterGroupLabel: {
+    ...typography.tiny,
+    color: colors.text,
+    letterSpacing: 2,
+    marginBottom: spacing.sm,
+  },
+  filterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOuterActive: { borderColor: colors.text },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.text,
+  },
+  filterOptionText: { ...typography.body, color: colors.text, flex: 1 },
+  filterOptionTextActive: { fontFamily: 'Inter_600SemiBold' },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  modalFooterBtn: {
+    height: 48,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  modalFooterBtnGhost: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexShrink: 0,
+  },
+  modalFooterBtnPrimary: {
+    flex: 1,
+    backgroundColor: colors.text,
+  },
+  modalFooterTextGhost: {
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 1.5,
+    fontSize: 12,
+    color: colors.text,
+  },
+  modalFooterTextPrimary: {
+    color: colors.white,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 1.5,
+    fontSize: 12,
+  },
 });

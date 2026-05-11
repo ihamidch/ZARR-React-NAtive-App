@@ -3,6 +3,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StatusBar,
@@ -32,12 +33,14 @@ export const ProductDetailScreen = ({
     product?.colors?.[0]?.name,
   );
   const [qty, setQty] = useState(1);
+  const [sizeModalOpen, setSizeModalOpen] = useState(false);
+  const [showSpecs, setShowSpecs] = useState(true);
 
   const related = useMemo(() => {
     if (!product) return [];
     return allProducts
       .filter((p) => p.category === product.category && p.id !== product.id)
-      .slice(0, 6);
+      .slice(0, 8);
   }, [product]);
 
   if (!product) {
@@ -54,15 +57,19 @@ export const ProductDetailScreen = ({
   }
 
   const gallery = product.gallery ?? [product.image];
+  const sizes = product.sizes ?? [];
 
   const onAddToCart = () => {
-    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
-      Alert.alert('Select a size', 'Please choose a size before adding to cart.');
+    if (sizes.length > 0 && !selectedSize) {
+      Alert.alert(
+        'Please select a size',
+        `Choose from ${sizes.join(', ')} before adding to cart.`,
+      );
       return;
     }
     Alert.alert(
-      'Added to bag',
-      `${product.title} · ${selectedColor ?? ''}${
+      'Added to cart',
+      `${product.title}\n${selectedColor ?? ''}${
         selectedSize ? ' · ' + selectedSize : ''
       } · Qty ${qty}`,
     );
@@ -76,12 +83,12 @@ export const ProductDetailScreen = ({
         <Pressable onPress={() => navigation.goBack()} style={styles.iconBtn}>
           <Ionicons name="chevron-back" size={22} color={colors.text} />
         </Pressable>
-        <Text style={styles.topTitle} numberOfLines={1}>
-          {product.title}
-        </Text>
+        <View style={styles.topTitleWrap}>
+          <Text style={styles.brand}>ZARR</Text>
+        </View>
         <View style={styles.topRight}>
           <Pressable style={styles.iconBtn}>
-            <Ionicons name="heart-outline" size={22} color={colors.text} />
+            <Ionicons name="share-outline" size={22} color={colors.text} />
           </Pressable>
           <Pressable style={styles.iconBtn}>
             <Ionicons name="bag-outline" size={22} color={colors.text} />
@@ -90,41 +97,51 @@ export const ProductDetailScreen = ({
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(e) => {
-            const idx = Math.round(e.nativeEvent.contentOffset.x / WINDOW_WIDTH);
-            setActiveImage(idx);
-          }}
-        >
-          {gallery.map((uri, i) => (
-            <View key={i} style={styles.heroImageWrap}>
-              <Image source={{ uri }} style={styles.heroImage} />
-              {product.discountPercent ? (
-                <View style={styles.discountBadge}>
-                  <Text style={styles.discountBadgeText}>
-                    -{product.discountPercent}%
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-          ))}
-        </ScrollView>
-        <View style={styles.dotsRow}>
-          {gallery.map((_, i) => (
-            <View
-              key={i}
-              style={[styles.dot, i === activeImage && styles.dotActive]}
-            />
-          ))}
+        {/* Gallery */}
+        <View>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) => {
+              const idx = Math.round(
+                e.nativeEvent.contentOffset.x / WINDOW_WIDTH,
+              );
+              setActiveImage(idx);
+            }}
+          >
+            {gallery.map((uri, i) => (
+              <View key={i} style={styles.heroImageWrap}>
+                <Image source={{ uri }} style={styles.heroImage} />
+                {product.discountPercent ? (
+                  <View style={styles.discountBadge}>
+                    <Text style={styles.discountBadgeText}>
+                      -{product.discountPercent}%
+                    </Text>
+                  </View>
+                ) : null}
+                <Pressable style={styles.wishlistFloat}>
+                  <Ionicons
+                    name="heart-outline"
+                    size={20}
+                    color={colors.text}
+                  />
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
+          <View style={styles.dotsRow}>
+            {gallery.map((_, i) => (
+              <View
+                key={i}
+                style={[styles.dot, i === activeImage && styles.dotActive]}
+              />
+            ))}
+          </View>
         </View>
 
+        {/* Title + price block */}
         <View style={styles.infoBlock}>
-          <Text style={styles.category}>
-            {product.category === 'women' ? "WOMEN'S COLLECTION" : "MEN'S COLLECTION"}
-          </Text>
           <Text style={styles.title}>{product.title}</Text>
 
           <View style={styles.priceRow}>
@@ -137,23 +154,31 @@ export const ProductDetailScreen = ({
               {formatPrice(product.price)}
             </Text>
             {product.originalPrice ? (
-              <Text style={styles.originalPrice}>
-                {formatPrice(product.originalPrice)}
-              </Text>
-            ) : null}
-            {product.discountPercent ? (
-              <View style={styles.savePill}>
-                <Text style={styles.savePillText}>
-                  SAVE {product.discountPercent}%
+              <>
+                <Text style={styles.originalPrice}>
+                  {formatPrice(product.originalPrice)}
                 </Text>
-              </View>
+                <View style={styles.discountPill}>
+                  <Text style={styles.discountPillText}>
+                    -{product.discountPercent}%
+                  </Text>
+                </View>
+              </>
             ) : null}
           </View>
 
+          {product.taxIncluded ? (
+            <Text style={styles.taxLine}>Tax included.</Text>
+          ) : null}
+
+          {/* Color */}
           {product.colors && product.colors.length > 0 ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                Color{selectedColor ? `: ${selectedColor}` : ''}
+              <Text style={styles.label}>
+                COLOR:{' '}
+                <Text style={styles.labelValue}>
+                  {selectedColor ?? product.color ?? ''}
+                </Text>
               </Text>
               <View style={styles.swatchRow}>
                 {product.colors.map((c) => {
@@ -174,40 +199,35 @@ export const ProductDetailScreen = ({
             </View>
           ) : null}
 
-          {product.sizes && product.sizes.length > 0 ? (
+          {/* Size — dropdown like ZARR ('Please select') */}
+          {sizes.length > 0 ? (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Select size</Text>
+                <Text style={styles.label}>SIZE:</Text>
                 <Pressable>
                   <Text style={styles.sizeGuide}>Size guide</Text>
                 </Pressable>
               </View>
-              <View style={styles.sizeRow}>
-                {product.sizes.map((s) => {
-                  const active = selectedSize === s;
-                  return (
-                    <Pressable
-                      key={s}
-                      style={[styles.sizeChip, active && styles.sizeChipActive]}
-                      onPress={() => setSelectedSize(s)}
-                    >
-                      <Text
-                        style={[
-                          styles.sizeText,
-                          active && styles.sizeTextActive,
-                        ]}
-                      >
-                        {s}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <Pressable
+                style={styles.sizeSelect}
+                onPress={() => setSizeModalOpen(true)}
+              >
+                <Text
+                  style={[
+                    styles.sizeSelectText,
+                    !selectedSize && styles.sizeSelectPlaceholder,
+                  ]}
+                >
+                  {selectedSize ?? `Please select ${sizes[0]}`}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color={colors.text} />
+              </Pressable>
             </View>
           ) : null}
 
+          {/* Quantity */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quantity</Text>
+            <Text style={styles.label}>QUANTITY:</Text>
             <View style={styles.qtyRow}>
               <Pressable
                 style={styles.qtyBtn}
@@ -225,16 +245,66 @@ export const ProductDetailScreen = ({
             </View>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.description}>{product.description}</Text>
-          </View>
+          {/* Specs table — exact ZARR layout */}
+          {product.specs && product.specs.length > 0 ? (
+            <View style={styles.specsWrap}>
+              <Pressable
+                style={styles.specsHeader}
+                onPress={() => setShowSpecs((v) => !v)}
+              >
+                <Text style={styles.specsTitle}>PRODUCT DETAILS</Text>
+                <Ionicons
+                  name={showSpecs ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.text}
+                />
+              </Pressable>
+              {showSpecs ? (
+                <View style={styles.specsTable}>
+                  {product.specs.map((s, i) => (
+                    <View
+                      key={s.label}
+                      style={[
+                        styles.specRow,
+                        i === product.specs!.length - 1 && styles.specRowLast,
+                      ]}
+                    >
+                      <Text style={styles.specLabel}>{s.label}:</Text>
+                      <Text style={styles.specValue}>{s.value}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
 
+          {/* Description */}
+          {product.description ? (
+            <View style={styles.section}>
+              <Text style={styles.label}>DESCRIPTION</Text>
+              <Text style={styles.description}>{product.description}</Text>
+            </View>
+          ) : null}
+
+          {/* Perks */}
           <View style={styles.perks}>
             {[
-              { icon: 'cube-outline' as const, label: 'Free shipping over Rs. 5,000' },
-              { icon: 'refresh-outline' as const, label: 'Easy 7-day returns' },
-              { icon: 'shield-checkmark-outline' as const, label: 'Authenticity guaranteed' },
+              {
+                icon: 'cube-outline' as const,
+                label: 'Free shipping over Rs. 5,000',
+              },
+              {
+                icon: 'refresh-outline' as const,
+                label: 'Easy 7-day returns',
+              },
+              {
+                icon: 'shield-checkmark-outline' as const,
+                label: 'Authenticity guaranteed',
+              },
+              {
+                icon: 'cash-outline' as const,
+                label: 'Cash on delivery available',
+              },
             ].map((p) => (
               <View key={p.label} style={styles.perkRow}>
                 <Ionicons name={p.icon} size={18} color={colors.text} />
@@ -266,17 +336,71 @@ export const ProductDetailScreen = ({
           </View>
         ) : null}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 110 }} />
       </ScrollView>
 
+      {/* Sticky add-to-cart bar */}
       <View style={styles.bottomBar}>
         <Pressable style={styles.heartBtnLarge}>
           <Ionicons name="heart-outline" size={22} color={colors.text} />
         </Pressable>
         <Pressable style={styles.addBtn} onPress={onAddToCart}>
-          <Text style={styles.addBtnText}>ADD TO BAG · {formatPrice(product.price * qty)}</Text>
+          <Text style={styles.addBtnText}>
+            ADD TO CART · {formatPrice(product.price * qty)}
+          </Text>
         </Pressable>
       </View>
+
+      {/* Size picker modal */}
+      <Modal
+        visible={sizeModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSizeModalOpen(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setSizeModalOpen(false)}
+        >
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select size</Text>
+              <Pressable onPress={() => setSizeModalOpen(false)}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </Pressable>
+            </View>
+            {sizes.map((s) => {
+              const active = selectedSize === s;
+              return (
+                <Pressable
+                  key={s}
+                  style={styles.modalOption}
+                  onPress={() => {
+                    setSelectedSize(s);
+                    setSizeModalOpen(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.modalOptionText,
+                      active && styles.modalOptionTextActive,
+                    ]}
+                  >
+                    {s}
+                  </Text>
+                  {active ? (
+                    <Ionicons
+                      name="checkmark"
+                      size={20}
+                      color={colors.text}
+                    />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -299,12 +423,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topTitle: {
-    flex: 1,
-    ...typography.h3,
+  topTitleWrap: { flex: 1, alignItems: 'center' },
+  brand: {
+    fontFamily: 'PlayfairDisplay_700Bold',
+    fontSize: 22,
+    letterSpacing: 4,
     color: colors.text,
-    textAlign: 'center',
-    paddingHorizontal: spacing.sm,
   },
   topRight: { flexDirection: 'row' },
   heroImageWrap: {
@@ -328,6 +452,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 0.5,
   },
+  wishlistFloat: {
+    position: 'absolute',
+    top: spacing.lg,
+    right: spacing.lg,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   dotsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -340,25 +475,13 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: colors.divider,
   },
-  dotActive: {
-    backgroundColor: colors.text,
-    width: 18,
-  },
-  infoBlock: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-  },
-  category: {
-    ...typography.tiny,
-    color: colors.textMuted,
-    letterSpacing: 3,
-    marginBottom: spacing.xs,
-  },
+  dotActive: { backgroundColor: colors.text, width: 18 },
+  infoBlock: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
   title: {
     fontFamily: 'PlayfairDisplay_700Bold',
     fontSize: 22,
     color: colors.text,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     lineHeight: 28,
   },
   priceRow: {
@@ -366,7 +489,7 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: 4,
   },
   price: {
     fontFamily: 'PlayfairDisplay_700Bold',
@@ -378,16 +501,22 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textDecorationLine: 'line-through',
   },
-  savePill: {
+  discountPill: {
     backgroundColor: colors.accentSoft,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: radius.sm,
   },
-  savePillText: {
+  discountPillText: {
     ...typography.tiny,
     color: colors.accent,
     letterSpacing: 1,
+  },
+  taxLine: {
+    ...typography.small,
+    color: colors.textMuted,
+    marginTop: 2,
+    marginBottom: spacing.md,
   },
   section: { marginTop: spacing.lg },
   sectionHeader: {
@@ -396,18 +525,36 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.sm,
   },
-  sectionTitle: {
-    ...typography.smallMed,
+  label: {
+    ...typography.tiny,
     color: colors.text,
-    letterSpacing: 1,
+    letterSpacing: 2,
     marginBottom: spacing.sm,
-    textTransform: 'uppercase',
+  },
+  labelValue: {
+    fontFamily: 'Inter_400Regular',
+    letterSpacing: 0,
+    textTransform: 'none',
+    color: colors.textMuted,
   },
   sizeGuide: {
     ...typography.small,
     color: colors.text,
     textDecorationLine: 'underline',
   },
+  sizeSelect: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 48,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    backgroundColor: colors.white,
+  },
+  sizeSelectText: { ...typography.body, color: colors.text },
+  sizeSelectPlaceholder: { color: colors.textMuted },
   swatchRow: { flexDirection: 'row', gap: spacing.sm },
   swatch: {
     width: 36,
@@ -426,31 +573,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  sizeRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  sizeChip: {
-    minWidth: 50,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  sizeChipActive: {
-    borderColor: colors.text,
-    backgroundColor: colors.text,
-  },
-  sizeText: {
-    ...typography.smallMed,
-    color: colors.text,
-    letterSpacing: 1,
-  },
-  sizeTextActive: { color: colors.white },
-  qtyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
-  },
+  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   qtyBtn: {
     width: 36,
     height: 36,
@@ -480,6 +603,37 @@ const styles = StyleSheet.create({
   },
   perkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   perkText: { ...typography.smallMed, color: colors.text },
+  specsWrap: {
+    marginTop: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+  },
+  specsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+  },
+  specsTitle: { ...typography.tiny, color: colors.text, letterSpacing: 2 },
+  specsTable: { backgroundColor: colors.white },
+  specRow: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  specRowLast: { borderBottomWidth: 0 },
+  specLabel: {
+    ...typography.smallMed,
+    color: colors.text,
+    flex: 0.4,
+  },
+  specValue: { ...typography.small, color: colors.textMuted, flex: 0.6 },
   relatedWrap: {
     marginTop: spacing.lg,
     paddingVertical: spacing.lg,
@@ -492,10 +646,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
   },
-  relatedRow: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-  },
+  relatedRow: { paddingHorizontal: spacing.lg, gap: spacing.md },
   bottomBar: {
     position: 'absolute',
     left: 0,
@@ -551,5 +702,45 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontFamily: 'Inter_700Bold',
     letterSpacing: 1.5,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    paddingTop: spacing.md,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  modalTitle: {
+    fontFamily: 'PlayfairDisplay_700Bold',
+    fontSize: 18,
+    color: colors.text,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  modalOptionText: { ...typography.body, color: colors.text },
+  modalOptionTextActive: {
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 0.5,
   },
 });
