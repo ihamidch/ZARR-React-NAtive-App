@@ -30,27 +30,35 @@ export const categories: CategoryCard[] = [
 export const featuredCollections: Collection[] = [
   {
     id: 'la-toscana',
-    title: "La Toscana",
+    title: 'La Toscana',
     image:
       'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=900&q=80',
+    description:
+      'A romantic edit inspired by Tuscan summers — soft silhouettes, sun-washed tones, and effortless drape.',
   },
   {
     id: 'mahay-spring',
     title: "Mahay Spring '26",
     image:
       'https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=900&q=80',
+    description:
+      'Fresh florals and airy lawn pieces — the lightweight everyday wardrobe for spring.',
   },
   {
     id: 'luxury-lawn',
     title: "Luxury Lawn '26",
     image:
       'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=900&q=80',
+    description:
+      'Premium lawn fabrics with hand-embroidered detailing for elevated daily wear.',
   },
   {
     id: 'muzlin',
     title: "Muzlin '26",
     image:
       'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80',
+    description:
+      'Woven muzlin three-piece suits with refined embellishment for festive occasions.',
   },
 ];
 
@@ -414,3 +422,71 @@ export const trendingSearches = [
 
 export const formatPrice = (value: number) =>
   `Rs.${value.toLocaleString('en-PK')}`;
+
+const sizesWomen = ['XS', 'S', 'M', 'L', 'XL'];
+const sizesMen = ['S', 'M', 'L', 'XL', 'XXL'];
+
+const womenColors = [
+  { name: 'Rose', hex: '#C84B6E' },
+  { name: 'Sand', hex: '#D8BFA0' },
+  { name: 'Onyx', hex: '#1A1A1A' },
+  { name: 'Sage', hex: '#9BAE8A' },
+];
+const menColors = [
+  { name: 'Black', hex: '#111111' },
+  { name: 'Indigo', hex: '#283149' },
+  { name: 'Sand', hex: '#C9B58A' },
+  { name: 'White', hex: '#F4F1ED' },
+];
+
+const longDescription =
+  "Crafted from premium-grade fabric with hand-finished detailing, this piece is designed for effortless everyday wear. Lightweight, breathable, and tailored for a relaxed-fit silhouette. Ethically produced in Pakistan.\n\n· Premium materials\n· True to size\n· Easy care — dry clean recommended\n· Free shipping on orders over Rs. 5,000";
+
+const galleryFallback = [
+  'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1542295669297-4d352b042bca?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=900&q=80',
+];
+
+const collectionFor = (i: number) =>
+  featuredCollections[i % featuredCollections.length].id;
+
+const enrich = (
+  products: Product[],
+  cat: 'women' | 'men',
+): Product[] =>
+  products.map((p, i) => ({
+    ...p,
+    description: p.description ?? longDescription,
+    sizes: p.sizes ?? (cat === 'women' ? sizesWomen : sizesMen),
+    colors: p.colors ?? (cat === 'women' ? womenColors : menColors),
+    gallery: p.gallery ?? [p.image, ...galleryFallback],
+    collectionId: p.collectionId ?? collectionFor(i),
+    inStock: p.inStock ?? true,
+  }));
+
+const _popularWomen = enrich(popularWomen, 'women');
+const _popularMen = enrich(popularMen, 'men');
+const _saleWomen = enrich(saleWomen, 'women');
+const _saleMen = enrich(saleMen, 'men');
+
+(popularWomen as Product[]).splice(0, popularWomen.length, ..._popularWomen);
+(popularMen as Product[]).splice(0, popularMen.length, ..._popularMen);
+(saleWomen as Product[]).splice(0, saleWomen.length, ..._saleWomen);
+(saleMen as Product[]).splice(0, saleMen.length, ..._saleMen);
+
+export const allProducts: Product[] = [
+  ...popularWomen,
+  ...popularMen,
+  ...saleWomen,
+  ...saleMen,
+];
+
+export const getProductById = (id: string): Product | undefined =>
+  allProducts.find((p) => p.id === id);
+
+export const getProductsByCollection = (collectionId: string): Product[] =>
+  allProducts.filter((p) => p.collectionId === collectionId);
+
+export const getCollectionById = (id: string): Collection | undefined =>
+  featuredCollections.find((c) => c.id === id);

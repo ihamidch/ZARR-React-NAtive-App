@@ -22,9 +22,15 @@ type Tab = {
 
 type Props = {
   tabs: Tab[];
+  onProductPress?: (productId: string) => void;
+  onSeeAllPress?: (tabId: string) => void;
 };
 
-export const ProductCarousel = ({ tabs }: Props) => {
+export const ProductCarousel = ({
+  tabs,
+  onProductPress,
+  onSeeAllPress,
+}: Props) => {
   const [activeId, setActiveId] = useState(tabs[0]?.id);
   const active = tabs.find((t) => t.id === activeId) ?? tabs[0];
 
@@ -55,7 +61,12 @@ export const ProductCarousel = ({ tabs }: Props) => {
         contentContainerStyle={styles.scrollContent}
       >
         {active.products.map((p) => (
-          <ProductCard key={p.id} product={p} width={170} />
+          <ProductCard
+            key={p.id}
+            product={p}
+            width={170}
+            onPress={() => onProductPress?.(p.id)}
+          />
         ))}
 
         <ImageBackground
@@ -68,7 +79,10 @@ export const ProductCarousel = ({ tabs }: Props) => {
             <Text style={styles.heroEyebrow}>FEATURED</Text>
             <Text style={styles.heroTitle}>{active.heroTitle}</Text>
             <Text style={styles.heroSubtitle}>{active.heroSubtitle}</Text>
-            <Pressable style={styles.viewAllBtn}>
+            <Pressable
+              style={styles.viewAllBtn}
+              onPress={() => onSeeAllPress?.(active.id)}
+            >
               <Text style={styles.viewAllText}>VIEW ALL  →</Text>
             </Pressable>
           </View>

@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts as usePlayfair } from '@expo-google-fonts/playfair-display/useFonts';
 import { PlayfairDisplay_400Regular } from '@expo-google-fonts/playfair-display/400Regular';
@@ -13,11 +15,16 @@ import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
 import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { CollectionScreen } from './src/screens/CollectionScreen';
+import { ProductDetailScreen } from './src/screens/ProductDetailScreen';
+import type { RootStackParamList } from './src/types/navigation';
 import { colors } from './src/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
-  // ignore — already hidden
+  // ignore
 });
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   const [playfairLoaded] = usePlayfair({
@@ -67,7 +74,20 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-        <HomeScreen />
+        <NavigationContainer>
+          <Stack.Navigator
+            initialRouteName="Home"
+            screenOptions={{
+              headerShown: false,
+              animation: 'slide_from_right',
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          >
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Collection" component={CollectionScreen} />
+            <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
         <StatusBar style="dark" />
       </View>
     </SafeAreaProvider>

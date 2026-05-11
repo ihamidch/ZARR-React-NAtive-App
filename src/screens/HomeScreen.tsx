@@ -13,9 +13,15 @@ import { OffersSection } from '../components/OffersSection';
 import { Footer } from '../components/Footer';
 import { Section } from '../components/Section';
 import { popularMen, popularWomen, saleMen, saleWomen } from '../data';
+import type { HomeScreenProps } from '../types/navigation';
 import { colors } from '../theme';
 
-export const HomeScreen = () => {
+export const HomeScreen = ({ navigation }: HomeScreenProps) => {
+  const goCollection = (collectionId: string, title: string) =>
+    navigation.navigate('Collection', { collectionId, title });
+  const goProduct = (productId: string) =>
+    navigation.navigate('ProductDetail', { productId });
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
@@ -36,7 +42,7 @@ export const HomeScreen = () => {
             title="Shop By Category"
             subtitle="Curated for every mood"
           />
-          <CategoryGrid />
+          <CategoryGrid onPress={goCollection} />
         </Section>
 
         <Section background={colors.sectionCream}>
@@ -44,7 +50,7 @@ export const HomeScreen = () => {
             title="Featured Collections"
             subtitle="The drops everyone's talking about"
           />
-          <FeaturedCollections />
+          <FeaturedCollections onPress={goCollection} />
         </Section>
 
         <Section background={colors.sectionWhite}>
@@ -75,6 +81,10 @@ export const HomeScreen = () => {
                 products: popularMen,
               },
             ]}
+            onProductPress={goProduct}
+            onSeeAllPress={(tabId) =>
+              goCollection(tabId, tabId === 'women' ? 'Women' : 'Men')
+            }
           />
         </Section>
 
@@ -106,6 +116,10 @@ export const HomeScreen = () => {
                 products: saleMen,
               },
             ]}
+            onProductPress={goProduct}
+            onSeeAllPress={(tabId) =>
+              goCollection(tabId, tabId === 'women' ? 'Women Sale' : 'Men Sale')
+            }
           />
         </Section>
 
@@ -144,12 +158,6 @@ export const HomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scroll: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  safe: { flex: 1, backgroundColor: colors.background },
+  scroll: { flex: 1, backgroundColor: colors.background },
 });

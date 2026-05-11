@@ -8,12 +8,13 @@ import { colors, radius, spacing, typography } from '../theme';
 type Props = {
   product: Product;
   width?: number;
+  onPress?: () => void;
 };
 
-export const ProductCard = ({ product, width = 170 }: Props) => {
+export const ProductCard = ({ product, width = 170, onPress }: Props) => {
   const { title, price, originalPrice, discountPercent, image } = product;
   return (
-    <Pressable style={[styles.card, { width }]}>
+    <Pressable style={[styles.card, { width }]} onPress={onPress}>
       <View style={styles.imageWrap}>
         <Image source={{ uri: image }} style={styles.image} />
         {discountPercent ? (

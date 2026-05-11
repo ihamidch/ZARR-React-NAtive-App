@@ -10,7 +10,11 @@ import {
 import { featuredCollections } from '../data';
 import { colors, radius, spacing, typography } from '../theme';
 
-export const FeaturedCollections = () => {
+type Props = {
+  onPress?: (collectionId: string, title: string) => void;
+};
+
+export const FeaturedCollections = ({ onPress }: Props) => {
   return (
     <ScrollView
       horizontal
@@ -18,7 +22,11 @@ export const FeaturedCollections = () => {
       contentContainerStyle={styles.row}
     >
       {featuredCollections.map((c) => (
-        <Pressable key={c.id} style={styles.card}>
+        <Pressable
+          key={c.id}
+          style={styles.card}
+          onPress={() => onPress?.(c.id, c.title)}
+        >
           <ImageBackground
             source={{ uri: c.image }}
             style={styles.image}

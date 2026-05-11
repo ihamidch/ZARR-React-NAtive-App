@@ -9,11 +9,18 @@ import {
 import { categories } from '../data';
 import { colors, radius, spacing, typography } from '../theme';
 
-export const CategoryGrid = () => {
+type Props = {
+  onPress?: (categoryId: string, title: string) => void;
+};
+
+export const CategoryGrid = ({ onPress }: Props) => {
   const [first, ...rest] = categories;
   return (
     <View style={styles.wrapper}>
-      <Pressable style={[styles.card, styles.cardLarge]}>
+      <Pressable
+        style={[styles.card, styles.cardLarge]}
+        onPress={() => onPress?.(first.id, first.title)}
+      >
         <ImageBackground
           source={{ uri: first.image }}
           style={styles.image}
@@ -28,7 +35,11 @@ export const CategoryGrid = () => {
       </Pressable>
       <View style={styles.row}>
         {rest.map((cat) => (
-          <Pressable key={cat.id} style={[styles.card, styles.cardSmall]}>
+          <Pressable
+            key={cat.id}
+            style={[styles.card, styles.cardSmall]}
+            onPress={() => onPress?.(cat.id, cat.title)}
+          >
             <ImageBackground
               source={{ uri: cat.image }}
               style={styles.image}
