@@ -6,6 +6,7 @@ import {
   Image,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -21,10 +22,10 @@ import {
 } from '../data';
 import { ProductCard } from '../components/ProductCard';
 import { Footer } from '../components/Footer';
+import { useProduct } from '../hooks/useProducts';
+import { useAuth } from '../context/AuthContext';
 import type { ProductDetailScreenProps } from '../types/navigation';
 import { colors, radius, spacing, typography } from '../theme';
-import { productApi } from '../services/api';
-import { Product } from '../types';
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
 
@@ -39,25 +40,8 @@ export const ProductDetailScreen = ({
   navigation,
 }: ProductDetailScreenProps) => {
   const { productId } = route.params;
-  const [product, setProduct] = useState<Product | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProduct = async () => {
-      setIsLoading(true);
-      try {
-        const data = await productApi.getProductDetail(productId);
-        setProduct(data);
-      } catch (error) {
-        console.error('Failed to fetch product detail:', error);
-        // Fallback to mock data if needed
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProduct();
-  }, [productId]);
+  const { data: product, status, refresh, source } = useProduct(productId);
+  const { isAuthenticated } = useAuth();
 
   const collection = product?.collectionId
     ? getCollectionById(product.collectionId)
@@ -141,8 +125,19 @@ export const ProductDetailScreen = ({
           <View style={styles.brandLogoUnderline} />
         </View>
         <View style={styles.topRight}>
-          <Pressable style={styles.iconBtn}>
-            <Ionicons name="person-outline" size={22} color={colors.text} />
+          <Pressable
+            style={styles.iconBtn}
+            onPress={() =>
+              isAuthenticated
+                ? navigation.navigate('Account')
+                : navigation.navigate('Login')
+            }
+          >
+            <Ionicons
+              name={isAuthenticated ? 'person' : 'person-outline'}
+              size={22}
+              color={colors.text}
+            />
           </Pressable>
           <Pressable style={styles.iconBtn}>
             <Ionicons name="bag-outline" size={22} color={colors.text} />
@@ -150,7 +145,7 @@ export const ProductDetailScreen = ({
         </View>
       </View>
 
-      {isLoading ? (
+      {status === 'loading' && !product ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator color={colors.text} size="large" />
         </View>
@@ -162,7 +157,16 @@ export const ProductDetailScreen = ({
           </Pressable>
         </View>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={status === 'loading'}
+              onRefresh={refresh}
+              tintColor={colors.text}
+            />
+          }
+        >
         {/* Single hero image (swipeable gallery if multiple) */}
         <View>
           <ScrollView

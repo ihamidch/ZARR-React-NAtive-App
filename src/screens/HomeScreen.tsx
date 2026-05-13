@@ -1,5 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import React from 'react';
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../components/Header';
 import { HeroBanner } from '../components/HeroBanner';
@@ -12,53 +20,71 @@ import { DarkBanner } from '../components/DarkBanner';
 import { OffersSection } from '../components/OffersSection';
 import { Footer } from '../components/Footer';
 import { Section } from '../components/Section';
-import { popularMen as mockPopularMen, popularWomen as mockPopularWomen, saleMen as mockSaleMen, saleWomen as mockSaleWomen } from '../data';
 import type { HomeScreenProps } from '../types/navigation';
-import { colors } from '../theme';
-import { productApi } from '../services/api';
-import { Product } from '../types';
+import { colors, spacing, typography } from '../theme';
+import { useHomeFeed } from '../hooks/useProducts';
+import { useAuth } from '../context/AuthContext';
 
 export const HomeScreen = ({ navigation }: HomeScreenProps) => {
-  const [popularWomen, setPopularWomen] = useState<Product[]>([]);
-  const [popularMen, setPopularMen] = useState<Product[]>([]);
-  const [saleWomen, setSaleWomen] = useState<Product[]>([]);
-  const [saleMen, setSaleMen] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const products = await productApi.getProducts();
-        // For demonstration, we'll split them. In a real app, you might have specific endpoints or tags.
-        setPopularWomen(products.filter((p: Product) => p.category === 'women'));
-        setPopularMen(products.filter((p: Product) => p.category === 'men'));
-        // If we don't have enough data, fallback to mock or just use what we have
-        setSaleWomen(products.filter((p: Product) => p.discountPercent && p.category === 'women'));
-        setSaleMen(products.filter((p: Product) => p.discountPercent && p.category === 'men'));
-      } catch (error) {
-        console.error('Failed to fetch dynamic data, using mock data:', error);
-        setPopularWomen(mockPopularWomen);
-        setPopularMen(mockPopularMen);
-        setSaleWomen(mockSaleWomen);
-        setSaleMen(mockSaleMen);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+  const { data, status, refresh, source, error } = useHomeFeed();
+  const { isAuthenticated } = useAuth();
 
   const goCollection = (collectionId: string, title: string) =>
     navigation.navigate('Collection', { collectionId, title });
   const goProduct = (productId: string) =>
     navigation.navigate('ProductDetail', { productId });
 
+  const goAccount = () =>
+    isAuthenticated
+      ? navigation.navigate('Account')
+      : navigation.navigate('Login');
+
+  const goTab = (tab: 'WOMEN' | 'MEN' | 'KIDS') => {
+    if (tab === 'KIDS') {
+      goCollection('kids', 'Kids');
+    } else if (tab === 'MEN') {
+      goCollection('men', 'Men');
+    } else {
+      goCollection('women', 'Women');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <Header />
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <Header
+        onAccountPress={goAccount}
+        onTabPress={goTab}
+        isAuthenticated={isAuthenticated}
+      />
+
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={status === 'loading'}
+            onRefresh={refresh}
+            tintColor={colors.text}
+          />
+        }
+      >
+        {status === 'loading' && source === 'mock' ? (
+          <View style={styles.loadingBar}>
+            <ActivityIndicator color={colors.text} size="small" />
+            <Text style={styles.loadingText}>Refreshing collection…</Text>
+          </View>
+        ) : null}
+
+        {source === 'mock' && error ? (
+          <View style={styles.bannerNotice}>
+            <Text style={styles.bannerNoticeText}>
+              Showing offline preview — connect the backend to see live
+              products.
+            </Text>
+          </View>
+        ) : null}
+
         <Section background={colors.sectionWhite} paddingBottom={0}>
           <HeroBanner
             eyebrow="NEW SEASON · '26"
@@ -100,7 +126,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
                   "Bold details and fresh silhouettes — explore what everyone's loving.",
                 heroImage:
                   'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=900&q=80',
-                products: popularWomen,
+                products: data.popularWomen,
               },
               {
                 id: 'men',
@@ -110,7 +136,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
                   'Laid-back essentials and standout streetwear making waves.',
                 heroImage:
                   'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80',
-                products: popularMen,
+                products: data.popularMen,
               },
             ]}
             onProductPress={goProduct}
@@ -135,7 +161,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
                   "Your favorite looks at can't-miss prices — shop before they're gone.",
                 heroImage:
                   'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=900&q=80',
-                products: saleWomen,
+                products: data.saleWomen,
               },
               {
                 id: 'men',
@@ -145,7 +171,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
                   'Style meets savings — upgrade your wardrobe with limited-time deals.',
                 heroImage:
                   'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=900&q=80',
-                products: saleMen,
+                products: data.saleMen,
               },
             ]}
             onProductPress={goProduct}
@@ -195,4 +221,23 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   scroll: { flex: 1, backgroundColor: colors.background },
+  loadingBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+  },
+  loadingText: { ...typography.small, color: colors.textMuted },
+  bannerNotice: {
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  bannerNoticeText: {
+    ...typography.small,
+    color: colors.text,
+    textAlign: 'center',
+  },
 });

@@ -17,6 +17,10 @@ import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { CollectionScreen } from './src/screens/CollectionScreen';
 import { ProductDetailScreen } from './src/screens/ProductDetailScreen';
+import { LoginScreen } from './src/screens/LoginScreen';
+import { RegisterScreen } from './src/screens/RegisterScreen';
+import { AccountScreen } from './src/screens/AccountScreen';
+import { AuthProvider } from './src/context/AuthContext';
 import type { RootStackParamList } from './src/types/navigation';
 import { colors } from './src/theme';
 
@@ -73,23 +77,31 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-        <NavigationContainer>
-          <Stack.Navigator
-            initialRouteName="Home"
-            screenOptions={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          >
-            <Stack.Screen name="Home" component={HomeScreen} />
-            <Stack.Screen name="Collection" component={CollectionScreen} />
-            <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
-          </Stack.Navigator>
-        </NavigationContainer>
-        <StatusBar style="dark" />
-      </View>
+      <AuthProvider>
+        <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+          <NavigationContainer>
+            <Stack.Navigator
+              initialRouteName="Home"
+              screenOptions={{
+                headerShown: false,
+                animation: 'slide_from_right',
+                contentStyle: { backgroundColor: colors.background },
+              }}
+            >
+              <Stack.Screen name="Home" component={HomeScreen} />
+              <Stack.Screen name="Collection" component={CollectionScreen} />
+              <Stack.Screen
+                name="ProductDetail"
+                component={ProductDetailScreen}
+              />
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="Register" component={RegisterScreen} />
+              <Stack.Screen name="Account" component={AccountScreen} />
+            </Stack.Navigator>
+          </NavigationContainer>
+          <StatusBar style="dark" />
+        </View>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

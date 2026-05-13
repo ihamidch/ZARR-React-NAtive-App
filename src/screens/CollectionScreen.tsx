@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Image,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -15,14 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ProductCard } from '../components/ProductCard';
 import { Footer } from '../components/Footer';
-import {
-  allProducts as mockAllProducts,
-  getCollectionById,
-} from '../data';
+import { useCollectionProducts } from '../hooks/useProducts';
 import type { CollectionScreenProps } from '../types/navigation';
 import { colors, radius, spacing, typography } from '../theme';
-import { productApi } from '../services/api';
-import { Product } from '../types';
 
 type SortKey =
   | 'featured'
@@ -70,8 +66,15 @@ export const CollectionScreen = ({
   navigation,
 }: CollectionScreenProps) => {
   const { collectionId, title } = route.params;
-  const collection = getCollectionById(collectionId);
   const isCategory = ['women', 'men', 'kids'].includes(collectionId);
+
+  const {
+    data: { products: dynamicProducts, collection },
+    status,
+    source,
+    refresh,
+    error,
+  } = useCollectionProducts(collectionId, isCategory);
 
   const [sort, setSort] = useState<SortKey>('featured');
   const [sortOpen, setSortOpen] = useState(false);
@@ -80,37 +83,6 @@ export const CollectionScreen = ({
   const [genderFilter, setGenderFilter] = useState<string>('All');
   const [availabilityFilter, setAvailabilityFilter] = useState<string>('All');
   const [priceFilter, setPriceFilter] = useState<string>('All');
-
-  const [dynamicProducts, setDynamicProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        let products: Product[] = [];
-        if (isCategory) {
-          // If it's a top-level category like 'women' or 'men'
-          const all = await productApi.getProducts();
-          products = all.filter((p: Product) => p.category === collectionId);
-        } else if (collectionId.endsWith('-sale')) {
-          const all = await productApi.getProducts();
-          products = all.filter((p: Product) => !!p.discountPercent);
-        } else {
-          // It's a specific collection
-          products = await productApi.getCollectionProducts(collectionId);
-        }
-        setDynamicProducts(products);
-      } catch (error) {
-        console.error('Failed to fetch collection products, using mock data:', error);
-        setDynamicProducts(mockAllProducts);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [collectionId, isCategory]);
 
   const filteredProducts = useMemo(() => {
     let list = dynamicProducts;
@@ -147,8 +119,7 @@ export const CollectionScreen = ({
 
     return list;
   }, [
-    collectionId,
-    isCategory,
+    dynamicProducts,
     genderFilter,
     availabilityFilter,
     priceFilter,
@@ -172,6 +143,14 @@ export const CollectionScreen = ({
 
   const ListHeader = (
     <View>
+      {source === 'mock' && error ? (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineBannerText}>
+            Showing offline preview — connect the backend to fetch live
+            products.
+          </Text>
+        </View>
+      ) : null}
       {bannerUri ? (
         <Image
           source={{ uri: bannerUri }}
@@ -270,21 +249,32 @@ export const CollectionScreen = ({
         </View>
       </View>
 
-      {isLoading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator color={colors.text} size="large" />
-        </View>
-      ) : (
-        <FlatList
-          data={filteredProducts}
+      <FlatList
+        data={filteredProducts}
         keyExtractor={(p) => p.id}
         numColumns={2}
         columnWrapperStyle={styles.gridRow}
         contentContainerStyle={styles.gridContent}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={ListHeader}
-        ListEmptyComponent={ListEmpty}
+        ListEmptyComponent={
+          status === 'loading' && dynamicProducts.length === 0 ? (
+            <View style={styles.loadingState}>
+              <ActivityIndicator color={colors.text} size="large" />
+              <Text style={styles.loadingStateText}>Loading products…</Text>
+            </View>
+          ) : (
+            ListEmpty
+          )
+        }
         ListFooterComponent={<Footer />}
+        refreshControl={
+          <RefreshControl
+            refreshing={status === 'loading' && dynamicProducts.length > 0}
+            onRefresh={refresh}
+            tintColor={colors.text}
+          />
+        }
         renderItem={({ item }) => (
           <View style={styles.gridItem}>
             <ProductCard
@@ -298,7 +288,7 @@ export const CollectionScreen = ({
           </View>
         )}
       />
-      )}
+
 
 
       {/* Sort modal */}
@@ -585,6 +575,23 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   emptyText: { ...typography.body, color: colors.textMuted },
+  loadingState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    padding: spacing.xl,
+  },
+  loadingStateText: { ...typography.small, color: colors.textMuted },
+  offlineBanner: {
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  offlineBannerText: {
+    ...typography.small,
+    color: colors.text,
+    textAlign: 'center',
+  },
   emptyCta: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,

@@ -12,34 +12,48 @@ import { colors, spacing, typography, radius } from '../theme';
 
 const TABS = ['WOMEN', 'MEN', 'KIDS'] as const;
 
-export const Header = () => {
+type HeaderProps = {
+  onAccountPress?: () => void;
+  onTabPress?: (tab: 'WOMEN' | 'MEN' | 'KIDS') => void;
+  isAuthenticated?: boolean;
+};
+
+export const Header = ({
+  onAccountPress,
+  onTabPress,
+  isAuthenticated,
+}: HeaderProps) => {
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>('WOMEN');
 
   return (
     <View style={styles.wrapper}>
-      {/* 1. Announcement Bar (Deep Black) */}
       <View style={styles.announcementBar}>
         <Text style={styles.announcementText}>
           NEW RELEASES: <Text style={{ color: colors.gold }}>EASTERN LUXURY '26</Text>
         </Text>
       </View>
 
-      {/* 2. Brand Row */}
       <View style={styles.topRow}>
         <Pressable hitSlop={12}>
           <Ionicons name="menu-outline" size={26} color={colors.black} />
         </Pressable>
 
         <View style={styles.logoContainer}>
-          {/* ZARR in Gold */}
           <Text style={[typography.brand, { color: colors.gold }]}>ZARR</Text>
-          {/* Bottom Line in Black */}
           <View style={styles.logoBottomLine} />
         </View>
 
         <View style={styles.rightIcons}>
           <Pressable style={styles.iconCircle}>
             <Ionicons name="search-outline" size={22} color={colors.black} />
+          </Pressable>
+          <Pressable style={styles.iconCircle} onPress={onAccountPress}>
+            <Ionicons
+              name={isAuthenticated ? 'person' : 'person-outline'}
+              size={22}
+              color={colors.black}
+            />
+            {isAuthenticated ? <View style={styles.statusDot} /> : null}
           </Pressable>
           <Pressable style={styles.iconCircle}>
             <Ionicons name="bag-outline" size={22} color={colors.black} />
@@ -50,25 +64,26 @@ export const Header = () => {
         </View>
       </View>
 
-      {/* 3. Luxury Tab Bar */}
       <View style={styles.tabRow}>
         {TABS.map((tab) => {
           const isActive = activeTab === tab;
           return (
             <Pressable
               key={tab}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => {
+                setActiveTab(tab);
+                onTabPress?.(tab);
+              }}
               style={styles.tabItem}
             >
               <Text
                 style={[
                   styles.tabText,
-                  { color: isActive ? colors.gold : colors.black }
+                  { color: isActive ? colors.gold : colors.black },
                 ]}
               >
                 {tab}
               </Text>
-              {/* Dynamic Gold Underline for active tab */}
               {isActive && <View style={styles.activeTabIndicator} />}
             </Pressable>
           );
@@ -132,6 +147,15 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  statusDot: {
+    position: 'absolute',
+    top: 7,
+    right: 7,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.gold,
   },
   badgeText: {
     color: colors.white,

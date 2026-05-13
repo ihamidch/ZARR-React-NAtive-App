@@ -1,5 +1,11 @@
 const axios = require('axios');
 
+const isShopifyConfigured = () =>
+  Boolean(
+    process.env.SHOPIFY_STORE_DOMAIN &&
+      process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN,
+  );
+
 const getShopifyClient = () => {
   const domain = process.env.SHOPIFY_STORE_DOMAIN;
   const accessToken = process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN;
@@ -10,11 +16,15 @@ const getShopifyClient = () => {
       'Content-Type': 'application/json',
       'X-Shopify-Storefront-Access-Token': accessToken,
     },
+    timeout: 10000,
   });
 };
 
 const shopifyService = {
+  isConfigured: isShopifyConfigured,
+
   getProducts: async () => {
+    if (!isShopifyConfigured()) return [];
     const client = getShopifyClient();
     const query = `
       {
@@ -81,6 +91,7 @@ const shopifyService = {
   },
 
   getProductByHandle: async (handle) => {
+    if (!isShopifyConfigured()) return null;
     const client = getShopifyClient();
     const query = `
       query getProduct($handle: String!) {
@@ -150,6 +161,7 @@ const shopifyService = {
   },
 
   getCollections: async () => {
+    if (!isShopifyConfigured()) return [];
     const client = getShopifyClient();
     const query = `
       {
@@ -185,6 +197,7 @@ const shopifyService = {
   },
 
   getProductsByCollection: async (handle) => {
+    if (!isShopifyConfigured()) return [];
     const client = getShopifyClient();
     const query = `
       query getCollectionProducts($handle: String!) {
