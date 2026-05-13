@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../components/Header';
@@ -12,11 +12,43 @@ import { DarkBanner } from '../components/DarkBanner';
 import { OffersSection } from '../components/OffersSection';
 import { Footer } from '../components/Footer';
 import { Section } from '../components/Section';
-import { popularMen, popularWomen, saleMen, saleWomen } from '../data';
+import { popularMen as mockPopularMen, popularWomen as mockPopularWomen, saleMen as mockSaleMen, saleWomen as mockSaleWomen } from '../data';
 import type { HomeScreenProps } from '../types/navigation';
 import { colors } from '../theme';
+import { productApi } from '../services/api';
+import { Product } from '../types';
 
 export const HomeScreen = ({ navigation }: HomeScreenProps) => {
+  const [popularWomen, setPopularWomen] = useState<Product[]>([]);
+  const [popularMen, setPopularMen] = useState<Product[]>([]);
+  const [saleWomen, setSaleWomen] = useState<Product[]>([]);
+  const [saleMen, setSaleMen] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const products = await productApi.getProducts();
+        // For demonstration, we'll split them. In a real app, you might have specific endpoints or tags.
+        setPopularWomen(products.filter((p: Product) => p.category === 'women'));
+        setPopularMen(products.filter((p: Product) => p.category === 'men'));
+        // If we don't have enough data, fallback to mock or just use what we have
+        setSaleWomen(products.filter((p: Product) => p.discountPercent && p.category === 'women'));
+        setSaleMen(products.filter((p: Product) => p.discountPercent && p.category === 'men'));
+      } catch (error) {
+        console.error('Failed to fetch dynamic data, using mock data:', error);
+        setPopularWomen(mockPopularWomen);
+        setPopularMen(mockPopularMen);
+        setSaleWomen(mockSaleWomen);
+        setSaleMen(mockSaleMen);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const goCollection = (collectionId: string, title: string) =>
     navigation.navigate('Collection', { collectionId, title });
   const goProduct = (productId: string) =>

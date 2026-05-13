@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   Image,
@@ -14,15 +15,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  allProducts,
+  allProducts as mockAllProducts,
   formatPrice,
   getCollectionById,
-  getProductById,
 } from '../data';
 import { ProductCard } from '../components/ProductCard';
 import { Footer } from '../components/Footer';
 import type { ProductDetailScreenProps } from '../types/navigation';
 import { colors, radius, spacing, typography } from '../theme';
+import { productApi } from '../services/api';
+import { Product } from '../types';
 
 const { width: WINDOW_WIDTH } = Dimensions.get('window');
 
@@ -37,7 +39,25 @@ export const ProductDetailScreen = ({
   navigation,
 }: ProductDetailScreenProps) => {
   const { productId } = route.params;
-  const product = getProductById(productId);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      setIsLoading(true);
+      try {
+        const data = await productApi.getProductDetail(productId);
+        setProduct(data);
+      } catch (error) {
+        console.error('Failed to fetch product detail:', error);
+        // Fallback to mock data if needed
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [productId]);
 
   const collection = product?.collectionId
     ? getCollectionById(product.collectionId)
@@ -46,46 +66,42 @@ export const ProductDetailScreen = ({
 
   const [activeImage, setActiveImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
-    product?.sizes?.[0],
+    undefined,
   );
   const [selectedColor, setSelectedColor] = useState<string | undefined>(
-    product?.colors?.[0]?.name,
+    undefined,
   );
+
+  useEffect(() => {
+    if (product) {
+      setSelectedSize(product.sizes?.[0]);
+      setSelectedColor(product.colors?.[0]?.name);
+    }
+  }, [product]);
+
   const [qty, setQty] = useState(1);
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
 
   const related = useMemo(() => {
     if (!product) return [];
-    return allProducts
+    return mockAllProducts
       .filter((p) => p.category === product.category && p.id !== product.id)
       .slice(0, 8);
   }, [product]);
 
   const recentlyViewed = useMemo(() => {
     if (!product) return [];
-    return allProducts
+    return mockAllProducts
       .filter((p) => p.id !== product.id)
       .slice(-6)
       .reverse();
   }, [product]);
 
-  if (!product) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.notFound}>
-          <Text style={styles.notFoundText}>Product not found.</Text>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backCta}>
-            <Text style={styles.backCtaText}>GO BACK</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
-  const gallery = product.gallery ?? [product.image];
-  const sizes = product.sizes ?? [];
-  const sku = skuFromProductId(product.id);
+  const gallery = product?.gallery ?? (product ? [product.image] : []);
+  const sizes = product?.sizes ?? [];
+  const sku = product ? skuFromProductId(product.id) : '';
   const skuSuffix = sizes[0]?.toLowerCase().includes('piece') ? '(3-PCS)' : '';
 
   const onAddToCart = () => {
@@ -98,7 +114,7 @@ export const ProductDetailScreen = ({
     }
     Alert.alert(
       'Added to cart',
-      `${product.title}\n${selectedColor ?? ''}${
+      `${product?.title || 'Product'}\n${selectedColor ?? ''}${
         selectedSize ? ' · ' + selectedSize : ''
       } · Qty ${qty}`,
     );
@@ -109,7 +125,7 @@ export const ProductDetailScreen = ({
       Alert.alert('Please select a size', 'Choose a size to continue.');
       return;
     }
-    Alert.alert('Buy it now', `Proceed to checkout for ${product.title}`);
+    Alert.alert('Buy it now', `Proceed to checkout for ${product?.title || 'Product'}`);
   };
 
   return (
@@ -134,7 +150,19 @@ export const ProductDetailScreen = ({
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      {isLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator color={colors.text} size="large" />
+        </View>
+      ) : !product ? (
+        <View style={styles.notFound}>
+          <Text style={styles.notFoundText}>Product not found.</Text>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backCta}>
+            <Text style={styles.backCtaText}>GO BACK</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false}>
         {/* Single hero image (swipeable gallery if multiple) */}
         <View>
           <ScrollView
@@ -362,6 +390,7 @@ export const ProductDetailScreen = ({
 
         <Footer />
       </ScrollView>
+      )}
 
       {/* Size picker modal */}
       <Modal

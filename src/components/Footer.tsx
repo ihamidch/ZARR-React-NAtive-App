@@ -5,9 +5,17 @@ import {
   Text,
   TextInput,
   View,
+  LayoutAnimation, // Added for smooth transition
+  Platform,
+  UIManager,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '../theme';
+
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const helpLinks = [
   'FAQs',
@@ -30,6 +38,12 @@ const socials: Array<keyof typeof Ionicons.glyphMap> = [
 
 export const Footer = () => {
   const [email, setEmail] = useState('');
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+
+  const toggleSection = (section: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedSection(expandedSection === section ? null : section);
+  };
 
   return (
     <View style={styles.wrapper}>
@@ -67,22 +81,54 @@ export const Footer = () => {
         </View>
       </View>
 
+      {/* HELP SECTION */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>HELP & INFORMATION</Text>
-        {helpLinks.map((l) => (
-          <Pressable key={l}>
-            <Text style={styles.link}>{l}</Text>
-          </Pressable>
-        ))}
+        <Pressable 
+          style={styles.accordionHeader} 
+          onPress={() => toggleSection('help')}
+        >
+          <Text style={styles.sectionTitle}>HELP & INFORMATION</Text>
+          <Ionicons 
+            name={expandedSection === 'help' ? "remove" : "add"} 
+            size={20} 
+            color={colors.white} 
+          />
+        </Pressable>
+        
+        {expandedSection === 'help' && (
+          <View style={styles.accordionContent}>
+            {helpLinks.map((l) => (
+              <Pressable key={l}>
+                <Text style={styles.link}>{l}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
       </View>
 
+      {/* ABOUT SECTION */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>ABOUT ZARR</Text>
-        {aboutLinks.map((l) => (
-          <Pressable key={l}>
-            <Text style={styles.link}>{l}</Text>
-          </Pressable>
-        ))}
+        <Pressable 
+          style={styles.accordionHeader} 
+          onPress={() => toggleSection('about')}
+        >
+          <Text style={styles.sectionTitle}>ABOUT ZARR</Text>
+          <Ionicons 
+            name={expandedSection === 'about' ? "remove" : "add"} 
+            size={20} 
+            color={colors.white} 
+          />
+        </Pressable>
+
+        {expandedSection === 'about' && (
+          <View style={styles.accordionContent}>
+            {aboutLinks.map((l) => (
+              <Pressable key={l}>
+                <Text style={styles.link}>{l}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
       </View>
 
       <View style={styles.section}>
@@ -104,6 +150,7 @@ export const Footer = () => {
 };
 
 const styles = StyleSheet.create({
+  // ... (keep your existing styles)
   wrapper: {
     backgroundColor: colors.footerBg,
     paddingTop: spacing.xxl,
@@ -197,12 +244,23 @@ const styles = StyleSheet.create({
   section: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222', // Subtle divider
+  },
+  // NEW STYLES FOR TOGGLE
+  accordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  accordionContent: {
+    marginTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   sectionTitle: {
     ...typography.tiny,
     color: colors.white,
     letterSpacing: 3,
-    marginBottom: spacing.sm,
   },
   link: {
     ...typography.body,
@@ -212,7 +270,7 @@ const styles = StyleSheet.create({
   socialRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
   },
   socialBtn: {
     width: 38,

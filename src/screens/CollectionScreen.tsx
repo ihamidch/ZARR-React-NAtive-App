@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   Modal,
@@ -15,12 +16,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { ProductCard } from '../components/ProductCard';
 import { Footer } from '../components/Footer';
 import {
-  allProducts,
+  allProducts as mockAllProducts,
   getCollectionById,
-  getProductsByCollection,
 } from '../data';
 import type { CollectionScreenProps } from '../types/navigation';
 import { colors, radius, spacing, typography } from '../theme';
+import { productApi } from '../services/api';
+import { Product } from '../types';
 
 type SortKey =
   | 'featured'
@@ -79,14 +81,39 @@ export const CollectionScreen = ({
   const [availabilityFilter, setAvailabilityFilter] = useState<string>('All');
   const [priceFilter, setPriceFilter] = useState<string>('All');
 
+  const [dynamicProducts, setDynamicProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        let products: Product[] = [];
+        if (isCategory) {
+          // If it's a top-level category like 'women' or 'men'
+          const all = await productApi.getProducts();
+          products = all.filter((p: Product) => p.category === collectionId);
+        } else if (collectionId.endsWith('-sale')) {
+          const all = await productApi.getProducts();
+          products = all.filter((p: Product) => !!p.discountPercent);
+        } else {
+          // It's a specific collection
+          products = await productApi.getCollectionProducts(collectionId);
+        }
+        setDynamicProducts(products);
+      } catch (error) {
+        console.error('Failed to fetch collection products, using mock data:', error);
+        setDynamicProducts(mockAllProducts);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [collectionId, isCategory]);
+
   const filteredProducts = useMemo(() => {
-    let list = isCategory
-      ? allProducts.filter((p) =>
-          collectionId === 'kids' ? false : p.category === collectionId,
-        )
-      : collectionId.endsWith('-sale')
-        ? allProducts.filter((p) => !!p.discountPercent)
-        : getProductsByCollection(collectionId);
+    let list = dynamicProducts;
 
     if (genderFilter === 'Women')
       list = list.filter((p) => p.category === 'women');
@@ -243,8 +270,13 @@ export const CollectionScreen = ({
         </View>
       </View>
 
-      <FlatList
-        data={filteredProducts}
+      {isLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator color={colors.text} size="large" />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredProducts}
         keyExtractor={(p) => p.id}
         numColumns={2}
         columnWrapperStyle={styles.gridRow}
@@ -266,6 +298,7 @@ export const CollectionScreen = ({
           </View>
         )}
       />
+      )}
 
 
       {/* Sort modal */}
