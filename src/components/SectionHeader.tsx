@@ -13,7 +13,9 @@ export const SectionHeader = ({ title, subtitle, onSeeAll }: Props) => {
     <View style={styles.wrapper}>
       <View style={styles.titleRow}>
         <View style={styles.line} />
+        <View style={styles.dot} />
         <Text style={styles.title}>{title}</Text>
+        <View style={styles.dot} />
         <View style={styles.line} />
       </View>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -36,24 +38,34 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   line: {
-    width: 32,
+    width: 28,
     height: 1,
-    backgroundColor: colors.divider,
+    backgroundColor: colors.borderStrong,
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.gold,
   },
   title: {
     ...typography.h1,
     color: colors.text,
     textAlign: 'center',
+    fontSize: 22,
+    paddingHorizontal: spacing.xs,
   },
   subtitle: {
     ...typography.small,
     color: colors.textMuted,
     textAlign: 'center',
-    marginTop: spacing.xs,
-    letterSpacing: 1,
+    marginTop: spacing.sm,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    fontSize: 11,
   },
   seeAllBtn: {
     marginTop: spacing.sm,

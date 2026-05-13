@@ -1,9 +1,16 @@
-import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  Animated,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPrice } from '../data';
 import type { Product } from '../types';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, radius, shadows, spacing, typography } from '../theme';
 
 type Props = {
   product: Product;
@@ -13,51 +20,102 @@ type Props = {
 };
 
 export const ProductCard = ({ product, width = 170, onPress, brand }: Props) => {
-  const { title, price, originalPrice, discountPercent, image } = product;
+  const { title, price, originalPrice, discountPercent, image, type } = product;
   const brandLabel = brand ?? product.brand;
+  const [liked, setLiked] = useState(false);
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const animateTo = (v: number) =>
+    Animated.spring(scale, {
+      toValue: v,
+      useNativeDriver: true,
+      friction: 8,
+      tension: 80,
+    }).start();
+
   return (
-    <Pressable style={[styles.card, { width }]} onPress={onPress}>
-      <View style={styles.imageWrap}>
-        <Image source={{ uri: image }} style={styles.image} />
-        {discountPercent ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>-{discountPercent}%</Text>
-          </View>
-        ) : null}
-        <Pressable style={styles.heartBtn} hitSlop={8}>
-          <Ionicons name="heart-outline" size={16} color={colors.text} />
-        </Pressable>
-      </View>
-      {brandLabel ? (
-        <Text style={styles.brand} numberOfLines={1}>
-          {brandLabel}
-        </Text>
-      ) : null}
-      <Text style={styles.title} numberOfLines={2}>
-        {title}
-      </Text>
-      <View style={styles.priceRow}>
-        <Text style={[styles.price, !!originalPrice && styles.priceSale]}>
-          {formatPrice(price)}
-        </Text>
-        {originalPrice ? (
-          <Text style={styles.originalPrice}>
-            {formatPrice(originalPrice)}
+    <Animated.View style={[styles.outer, { width, transform: [{ scale }] }]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => animateTo(0.97)}
+        onPressOut={() => animateTo(1)}
+        style={styles.card}
+      >
+        <View style={styles.imageWrap}>
+          <Image source={{ uri: image }} style={styles.image} />
+
+          {/* Subtle bottom-up shading so badge / heart stay readable on any photo */}
+          <View style={styles.imageShade} />
+
+          {discountPercent ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>−{discountPercent}%</Text>
+            </View>
+          ) : null}
+
+          {/* Discreet type chip at the bottom-left of the image so customers
+              instantly see what kind of item it is (Accessories, Western,
+              Loungewear, etc.) without it being confused with the brand. */}
+          {type ? (
+            <View style={styles.typeChip}>
+              <Text style={styles.typeChipText} numberOfLines={1}>
+                {type.toUpperCase()}
+              </Text>
+            </View>
+          ) : null}
+
+          <Pressable
+            style={styles.heartBtn}
+            hitSlop={10}
+            onPress={() => setLiked((v) => !v)}
+          >
+            <Ionicons
+              name={liked ? 'heart' : 'heart-outline'}
+              size={16}
+              color={liked ? colors.accent : colors.text}
+            />
+          </Pressable>
+        </View>
+
+        <View style={styles.meta}>
+          {brandLabel ? (
+            <Text style={styles.brand} numberOfLines={1}>
+              {brandLabel}
+            </Text>
+          ) : null}
+          <Text style={styles.title} numberOfLines={2}>
+            {title}
           </Text>
-        ) : null}
-      </View>
-    </Pressable>
+
+          <View style={styles.priceRow}>
+            <Text style={[styles.price, !!originalPrice && styles.priceSale]}>
+              {formatPrice(price)}
+            </Text>
+            {originalPrice ? (
+              <Text style={styles.originalPrice}>
+                {formatPrice(originalPrice)}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
+  outer: {
+    // Animated wrapper so the press scale doesn't collapse the card hit area.
+  },
   card: {
-    backgroundColor: 'transparent',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    ...shadows.soft,
   },
   imageWrap: {
     width: '100%',
     aspectRatio: 3 / 4,
-    borderRadius: radius.md,
     overflow: 'hidden',
     backgroundColor: colors.surfaceAlt,
   },
@@ -66,20 +124,44 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
+  imageShade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 60,
+    backgroundColor: 'rgba(0,0,0,0.10)',
+  },
   badge: {
     position: 'absolute',
     top: spacing.sm,
     left: spacing.sm,
-    backgroundColor: colors.text,
-    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.accent,
+    paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: radius.sm,
   },
   badgeText: {
     color: colors.white,
-    fontSize: 11,
+    fontSize: 10.5,
     fontFamily: 'Inter_700Bold',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
+  },
+  typeChip: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    left: spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+    maxWidth: '70%',
+  },
+  typeChipText: {
+    color: colors.text,
+    fontSize: 9,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 1.4,
   },
   heartBtn: {
     position: 'absolute',
@@ -90,23 +172,28 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    ...shadows.soft,
+  },
+  meta: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
   },
   brand: {
     fontFamily: 'PlayfairDisplay_700Bold_Italic',
-    fontSize: 12,
-    color: colors.text,
-    letterSpacing: 2,
+    fontSize: 11,
+    color: colors.goldDark,
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
-    marginTop: spacing.sm,
+    marginBottom: 4,
   },
   title: {
     ...typography.smallMed,
     color: colors.text,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xs,
-    minHeight: 36,
+    minHeight: 34,
     lineHeight: 17,
+    marginBottom: spacing.xs,
   },
   priceRow: {
     flexDirection: 'row',
@@ -117,6 +204,8 @@ const styles = StyleSheet.create({
   price: {
     ...typography.h3,
     color: colors.text,
+    fontSize: 14,
+    fontFamily: 'Inter_700Bold',
   },
   priceSale: {
     color: colors.accent,

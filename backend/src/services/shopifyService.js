@@ -1,272 +1,579 @@
 const axios = require('axios');
+const https = require('https');
 
-const isShopifyConfigured = () =>
-  Boolean(
-    process.env.SHOPIFY_STORE_DOMAIN &&
-      process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN,
-  );
+// Force IPv4 on outbound HTTPS calls. Many mobile / shared networks
+// (especially phone tethering) advertise IPv6 records they can't actually
+// route, causing axios to hang on ETIMEDOUT. Pinning the agent to family:4
+// makes Shopify requests reliable on any network.
+const ipv4Agent = new https.Agent({ family: 4, keepAlive: true });
 
-const getShopifyClient = () => {
-  const domain = process.env.SHOPIFY_STORE_DOMAIN;
-  const accessToken = process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN;
+// Most Shopify stores expose their public catalog as JSON without any
+// authentication via the following REST endpoints (used by every Shopify
+// storefront theme):
+//
+//   GET /products.json?limit=N
+//   GET /products/{handle}.json
+//   GET /collections.json?limit=N
+//   GET /collections/{handle}/products.json?limit=N
+//
+// We use these here so the app shows REAL store data (zarr.com.pk by
+// default) without needing the Storefront API access token.
 
-  return axios.create({
-    baseURL: `https://${domain}/api/2024-01/graphql.json`,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Storefront-Access-Token': accessToken,
-    },
-    timeout: 10000,
-  });
+const DEFAULT_DOMAIN = 'zarr.com.pk';
+const PLACEHOLDER_DOMAINS = new Set([
+  '',
+  'your-shop-name.myshopify.com',
+  'your-store.myshopify.com',
+  'mock.shop',
+]);
+
+const resolveDomain = () => {
+  const raw = (process.env.SHOPIFY_STORE_DOMAIN || '').trim();
+  if (PLACEHOLDER_DOMAINS.has(raw)) return DEFAULT_DOMAIN;
+  return raw;
 };
+
+const isShopifyConfigured = () => true; // REST is always available
+const isMockMode = () => false;
+
+const client = () =>
+  axios.create({
+    baseURL: `https://${resolveDomain()}`,
+    timeout: 20000,
+    headers: {
+      Accept: 'application/json',
+      'User-Agent':
+        'Mozilla/5.0 (ZARR-Mobile-App) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+    },
+    httpsAgent: ipv4Agent,
+  });
+
+// ---------- helpers ----------
+
+const stripHtml = (s = '') =>
+  String(s)
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+// Shopify's REST endpoints return product `tags` as an array on
+// /products.json but as a comma-separated string on /products/{handle}.json.
+// Normalise both forms.
+const normaliseTags = (tags) => {
+  if (Array.isArray(tags)) return tags.map((t) => String(t));
+  if (typeof tags === 'string')
+    return tags.split(',').map((t) => t.trim()).filter(Boolean);
+  return [];
+};
+
+const detectCategory = (tags, productType = '') => {
+  const list = normaliseTags(tags);
+  const lower = [
+    ...list.map((t) => t.toLowerCase()),
+    String(productType).toLowerCase(),
+  ];
+  const hasMen = lower.some((t) => /\b(men|mens|man)\b/i.test(t));
+  const hasWomen = lower.some((t) => /\b(women|womens|woman|ladies)\b/i.test(t));
+  if (hasMen && !hasWomen) return 'men';
+  if (hasWomen) return 'women';
+  return 'women';
+};
+
+// Build a deterministic hex from a color name so the swatch dot is roughly
+// the right tone even when the store uses unusual color labels.
+const COLOR_PALETTE = {
+  white: '#F0EDE6',
+  ivory: '#EFE7D7',
+  cream: '#E8DCC0',
+  beige: '#D7C9AE',
+  nude: '#D9C2A9',
+  black: '#0E0E0E',
+  charcoal: '#2B2B2B',
+  grey: '#8A8A8A',
+  gray: '#8A8A8A',
+  silver: '#BFBFBF',
+  red: '#B73A3A',
+  maroon: '#6B1B22',
+  rust: '#B86341',
+  pink: '#E8AFBE',
+  hotpink: '#E64A89',
+  rose: '#C84B6E',
+  fuchsia: '#C8336B',
+  peach: '#F2B597',
+  orange: '#D67D3C',
+  mustard: '#C9933F',
+  yellow: '#E8C547',
+  gold: '#B68A5C',
+  green: '#5C7A3C',
+  olive: '#6B6F3A',
+  emerald: '#2E7A4E',
+  mint: '#A3D9B1',
+  teal: '#2F7A78',
+  blue: '#2E4A6B',
+  navy: '#1B2A49',
+  skyblue: '#6FB1D9',
+  purple: '#5E3A8E',
+  lavender: '#A89BC9',
+  brown: '#6E4B2A',
+  tan: '#B89372',
+  multi: '#999999',
+};
+
+const colourHex = (name) => {
+  const key = String(name || '')
+    .toLowerCase()
+    .replace(/\s+/g, '');
+  return COLOR_PALETTE[key] || '#9A9A9A';
+};
+
+const uniqueSizes = (variants = []) => {
+  const set = new Set();
+  for (const v of variants) {
+    const candidate = v.option1 || v.option2 || v.title;
+    if (!candidate) continue;
+    if (/^[a-z0-9 \/-]{1,10}$/i.test(String(candidate))) {
+      set.add(String(candidate).split(' /')[0]);
+    }
+  }
+  return [...set];
+};
+
+const uniqueColors = (variants = []) => {
+  const seen = new Map();
+  for (const v of variants) {
+    const name = v.option2;
+    if (!name) continue;
+    const key = String(name).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.set(key, { name, hex: colourHex(name) });
+  }
+  return [...seen.values()];
+};
+
+// Real Pakistani fashion brands carried on ZARR (and similar marketplaces).
+// Keys are normalised lowercase, values are the canonical display name.
+const KNOWN_BRANDS = {
+  'junaid jamshed': 'Junaid Jamshed',
+  'junaid-jamshed': 'Junaid Jamshed',
+  jj: 'Junaid Jamshed',
+  'sana safinaz': 'Sana Safinaz',
+  'sana-safinaz': 'Sana Safinaz',
+  'sana-safinas': 'Sana Safinaz',
+  bandana: 'Bandana',
+  bandanapk: 'Bandana',
+  amoi: 'Amoi',
+  azure: 'Azure',
+  anchor: 'Anchor',
+  mushq: 'Mushq',
+  ego: 'Ego',
+  sapphire: 'Sapphire',
+  beechtree: 'Beechtree',
+  'gul ahmed': 'Gul Ahmed',
+  khaadi: 'Khaadi',
+  'lime light': 'Lime Light',
+  limelight: 'Lime Light',
+  'maria b': 'Maria B',
+  'maria-b': 'Maria B',
+  kayseria: 'Kayseria',
+  'naya dour': 'Naya Dour',
+  'naya-dour': 'Naya Dour',
+  koel: 'Koel',
+  insignia: 'Insignia',
+  'insignia-pk': 'Insignia',
+  manto: 'Manto',
+  'manto-online': 'Manto',
+  lakhanay: 'Lakhanay',
+  astoria: 'Astoria',
+  'beyond east': 'Beyond East',
+  beyondeast: 'Beyond East',
+  dynasty: 'Dynasty',
+  ismail: 'Ismail',
+  'cross stitch': 'Cross Stitch',
+  'cross-stitch': 'Cross Stitch',
+  'taana baana': 'Taana Baana',
+  'taana-baana': 'Taana Baana',
+  almirah: 'Almirah',
+  generation: 'Generation',
+  alkaram: 'Al Karam',
+  'al karam': 'Al Karam',
+  'al-karam': 'Al Karam',
+  warda: 'Warda',
+  zellbury: 'Zellbury',
+  origins: 'Origins',
+  bonanza: 'Bonanza',
+  'bonanza satrangi': 'Bonanza Satrangi',
+  outfitters: 'Outfitters',
+  edenrobe: 'Edenrobe',
+  rang: 'Rang',
+  'hussain rehar': 'Hussain Rehar',
+  'gulaal pk': 'Gulaal',
+  gulaal: 'Gulaal',
+  shehrnaz: 'Shehrnaz',
+  motifz: 'Motifz',
+  zara: 'Zara',
+  charizma: 'Charizma',
+  saadia: 'Saadia Asad',
+  'saadia asad': 'Saadia Asad',
+  zaha: 'Zaha',
+  agha: 'Agha Noor',
+  'agha noor': 'Agha Noor',
+};
+
+// Words that look like brands but are actually categories or generic terms.
+// We never treat any of these as a brand.
+const NOT_BRANDS = new Set([
+  'accessories',
+  'shoes',
+  'footwear',
+  'beauty',
+  'makeup',
+  'skincare',
+  'eastern',
+  'western',
+  'unstitched',
+  'stitched',
+  'ready to wear',
+  'ready-to-wear',
+  'rtw',
+  'unstitched / rtw',
+  'loungewear',
+  'modestwear',
+  'lawn',
+  'kids',
+  'women',
+  'men',
+  'unisex',
+  'grooming',
+  'kurta',
+  'kameez',
+  'shalwar',
+  'shirt',
+  'shirts',
+  'pants',
+  'fragrances',
+  'fragrance',
+  'dresses',
+  'dupattas',
+  'shawls',
+  'sale',
+  'new arrivals',
+  'featured',
+  'dresses & jumpsuits',
+  'dresses and jumpsuits',
+  'hoodies & sweatshirts',
+  'shoes & footwear',
+  'tops',
+  'bottoms',
+  'jewellery',
+  'jewelry',
+  'bags',
+]);
+
+const looksLikeCode = (s) =>
+  !!s &&
+  s.length <= 16 &&
+  /^[a-f0-9]{2,}-[a-f0-9]{2,}/i.test(s); // e.g. "6c6d15-63"
+
+const properCase = (s) =>
+  String(s)
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(' ');
+
+const findKnownBrand = (text) => {
+  if (!text) return null;
+  const lower = String(text).toLowerCase().trim();
+  if (KNOWN_BRANDS[lower]) return KNOWN_BRANDS[lower];
+  // Prefix match: "sana-safinas-mean3" → starts with "sana-safinas" → Sana Safinaz
+  for (const key of Object.keys(KNOWN_BRANDS)) {
+    if (lower.startsWith(key + '-') || lower.startsWith(key + ' ')) {
+      return KNOWN_BRANDS[key];
+    }
+  }
+  return null;
+};
+
+const cleanVendorName = (v) => {
+  if (!v) return null;
+  const trimmed = String(v).trim();
+  const lower = trimmed.toLowerCase();
+  if (NOT_BRANDS.has(lower)) return null;
+  if (looksLikeCode(lower)) return null;
+
+  const known = findKnownBrand(trimmed);
+  if (known) return known;
+
+  // "manto-online", "insignia-pk" → take the first slug part if it's a
+  // real word (vowel + reasonable length), else give up.
+  if (/^[a-z0-9\-]+$/.test(lower) && lower.includes('-')) {
+    const head = lower.split('-')[0];
+    if (head.length >= 3 && /[aeiou]/.test(head)) return properCase(head);
+    return null;
+  }
+
+  // Looks like a normal name (has vowels, reasonable length).
+  if (/[aeiou]/i.test(trimmed) && trimmed.length >= 3 && trimmed.length <= 30) {
+    return properCase(trimmed);
+  }
+  return null;
+};
+
+const pickBrand = (vendor, productType, tags, title) => {
+  const fromVendor = cleanVendorName(vendor);
+  if (fromVendor) return fromVendor;
+
+  const tagList = normaliseTags(tags);
+  for (const t of tagList) {
+    const known = findKnownBrand(t);
+    if (known) return known;
+  }
+
+  if (title) {
+    const firstWord = String(title).split(/[\s\-]/)[0];
+    const known = findKnownBrand(firstWord);
+    if (known) return known;
+  }
+  return undefined;
+};
+
+// Friendly category label derived from product_type / tags. Used as a
+// neutral metadata field — NEVER displayed as a brand.
+const pickType = (productType, tags) => {
+  if (productType && productType.length < 40) return productType;
+  const tagList = normaliseTags(tags);
+  const niceType = tagList.find((t) => NOT_BRANDS.has(t.toLowerCase()));
+  return niceType ? properCase(niceType) : undefined;
+};
+
+const mapProduct = (p) => {
+  if (!p) return null;
+  const first = p.variants?.[0];
+  const price = parseFloat(first?.price || 0);
+  const compareAt = parseFloat(first?.compare_at_price || 0);
+  const images = (p.images || []).map((i) => i.src).filter(Boolean);
+  const brand = pickBrand(p.vendor, p.product_type, p.tags, p.title);
+  const type = pickType(p.product_type, p.tags);
+  return {
+    id: p.handle,
+    handle: p.handle,
+    title: p.title,
+    description: stripHtml(p.body_html),
+    price,
+    originalPrice: compareAt > price ? compareAt : undefined,
+    discountPercent:
+      compareAt > price ? Math.round((1 - price / compareAt) * 100) : undefined,
+    image: images[0] || '',
+    gallery: images,
+    category: detectCategory(p.tags, p.product_type),
+    brand,
+    type,
+    inStock: (p.variants || []).some((v) => v.available !== false),
+    taxIncluded: true,
+    sizes: uniqueSizes(p.variants),
+    colors: uniqueColors(p.variants),
+    color: first?.option2 || undefined,
+    fabric: undefined,
+    work: type,
+    collectionId: p.handle,
+    specs: [
+      brand && { label: 'Brand', value: brand },
+      type && { label: 'Type', value: type },
+      first?.sku && { label: 'SKU', value: first.sku },
+    ].filter(Boolean),
+  };
+};
+
+const mapCollection = (c) => ({
+  id: c.handle,
+  handle: c.handle,
+  title: c.title,
+  description: stripHtml(c.description),
+  image: c.image?.src || '',
+  bannerImage: c.image?.src || '',
+  productsCount: c.products_count,
+});
+
+// ---------- public API ----------
 
 const shopifyService = {
   isConfigured: isShopifyConfigured,
+  resolveDomain,
+  isMockMode,
 
   getProducts: async () => {
-    if (!isShopifyConfigured()) return [];
-    const client = getShopifyClient();
-    const query = `
-      {
-        products(first: 20) {
-          edges {
-            node {
-              id
-              title
-              description
-              handle
-              productType
-              vendor
-              images(first: 5) {
-                edges {
-                  node {
-                    url
-                  }
-                }
-              }
-              variants(first: 1) {
-                edges {
-                  node {
-                    price {
-                      amount
-                      currencyCode
-                    }
-                    compareAtPrice {
-                      amount
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
-
     try {
-      const response = await client.post('', { query });
-      return response.data.data.products.edges.map(edge => {
-        const node = edge.node;
-        const price = parseFloat(node.variants.edges[0]?.node.price.amount || 0);
-        const originalPrice = parseFloat(node.variants.edges[0]?.node.compareAtPrice?.amount || 0);
-        
-        return {
-          id: node.handle,
-          title: node.title,
-          price: price,
-          originalPrice: originalPrice > price ? originalPrice : undefined,
-          discountPercent: originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : undefined,
-          image: node.images.edges[0]?.node.url || '',
-          gallery: node.images.edges.map(e => e.node.url),
-          category: node.productType.toLowerCase().includes('men') ? 'men' : 'women',
-          description: node.description,
-          brand: node.vendor,
-          handle: node.handle
-        };
+      const { data } = await client().get('/products.json', {
+        params: { limit: 50 },
       });
+      return (data.products || []).map(mapProduct).filter(Boolean);
     } catch (error) {
-      console.error('Error fetching products from Shopify:', error.message);
+      console.error('[shopify] getProducts:', error.message);
       throw error;
     }
   },
 
   getProductByHandle: async (handle) => {
-    if (!isShopifyConfigured()) return null;
-    const client = getShopifyClient();
-    const query = `
-      query getProduct($handle: String!) {
-        product(handle: $handle) {
-          id
-          title
-          description
-          handle
-          productType
-          vendor
-          images(first: 10) {
-            edges {
-              node {
-                url
-              }
-            }
-          }
-          variants(first: 10) {
-            edges {
-              node {
-                id
-                title
-                price {
-                  amount
-                  currencyCode
-                }
-                compareAtPrice {
-                  amount
-                }
-                selectedOptions {
-                  name
-                  value
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
-
     try {
-      const response = await client.post('', { query, variables: { handle } });
-      const node = response.data.data.product;
-      if (!node) return null;
-
-      const price = parseFloat(node.variants.edges[0]?.node.price.amount || 0);
-      const originalPrice = parseFloat(node.variants.edges[0]?.node.compareAtPrice?.amount || 0);
-
-      return {
-        id: node.handle,
-        title: node.title,
-        price: price,
-        originalPrice: originalPrice > price ? originalPrice : undefined,
-        discountPercent: originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : undefined,
-        image: node.images.edges[0]?.node.url || '',
-        gallery: node.images.edges.map(e => e.node.url),
-        category: node.productType.toLowerCase().includes('men') ? 'men' : 'women',
-        description: node.description,
-        brand: node.vendor,
-        sizes: [...new Set(node.variants.edges.map(v => v.node.selectedOptions.find(o => o.name === 'Size')?.value).filter(Boolean))],
-        handle: node.handle
-      };
+      const { data } = await client().get(
+        `/products/${encodeURIComponent(handle)}.json`,
+      );
+      return mapProduct(data.product);
     } catch (error) {
-      console.error(`Error fetching product ${handle} from Shopify:`, error.message);
-      throw error;
+      if (error.response?.status === 404) return null;
+      console.error(`[shopify] getProductByHandle(${handle}):`, error.message);
+      return null;
     }
   },
 
   getCollections: async () => {
-    if (!isShopifyConfigured()) return [];
-    const client = getShopifyClient();
-    const query = `
-      {
-        collections(first: 10) {
-          edges {
-            node {
-              id
-              title
-              handle
-              description
-              image {
-                url
-              }
-            }
-          }
-        }
-      }
-    `;
-
     try {
-      const response = await client.post('', { query });
-      return response.data.data.collections.edges.map(edge => ({
-        id: edge.node.handle,
-        title: edge.node.title,
-        image: edge.node.image?.url || '',
-        description: edge.node.description,
-        handle: edge.node.handle
-      }));
+      const { data } = await client().get('/collections.json', {
+        params: { limit: 250 },
+      });
+      // Prefer collections that have a hero image so the home rails look
+      // good; fall back to all if none of them have images.
+      const all = (data.collections || []).map(mapCollection);
+      const withImages = all.filter((c) => c.image);
+      return withImages.length ? withImages : all;
     } catch (error) {
-      console.error('Error fetching collections from Shopify:', error.message);
+      console.error('[shopify] getCollections:', error.message);
       throw error;
     }
   },
 
-  getProductsByCollection: async (handle) => {
-    if (!isShopifyConfigured()) return [];
-    const client = getShopifyClient();
-    const query = `
-      query getCollectionProducts($handle: String!) {
-        collection(handle: $handle) {
-          products(first: 20) {
-            edges {
-              node {
-                id
-                title
-                description
-                handle
-                productType
-                vendor
-                images(first: 5) {
-                  edges {
-                    node {
-                      url
-                    }
-                  }
-                }
-                variants(first: 1) {
-                  edges {
-                    node {
-                      price {
-                        amount
-                        currencyCode
-                      }
-                      compareAtPrice {
-                        amount
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
+  // Curated "Shop By Type" — maps user-friendly category labels to the best
+  // matching collection in the store. Falls back gracefully if a given type
+  // isn't represented (e.g. shops without an Accessories collection).
+  getCategoryShortcuts: async () => {
+    const TYPES = [
+      {
+        id: 'women',
+        label: 'Women',
+        match: [/^women(-|$)/i, /\bwomen-western\b/i, /-women-/i],
+      },
+      {
+        id: 'men',
+        label: 'Men',
+        match: [/^men(-|$)/i, /\b-men-\b/i, /-men-western\b/i],
+      },
+      {
+        id: 'accessories',
+        label: 'Accessories',
+        match: [/\baccessor/i],
+      },
+      {
+        id: 'eastern',
+        label: 'Eastern',
+        match: [/\beast/i],
+      },
+      {
+        id: 'western',
+        label: 'Western',
+        match: [/\bwestern\b/i],
+      },
+      {
+        id: 'lawn',
+        label: 'Lawn',
+        match: [/\blawn\b/i],
+      },
+      {
+        id: 'modestwear',
+        label: 'Modestwear',
+        match: [/\bmodest/i],
+      },
+      {
+        id: 'loungewear',
+        label: 'Loungewear',
+        match: [/\bloung/i],
+      },
+      {
+        id: 'kids',
+        label: 'Kids',
+        match: [/\bkids\b/i, /\bgirls\b/i, /\bboys\b/i],
+      },
+      {
+        id: 'beauty',
+        label: 'Beauty',
+        match: [/\bbeauty\b/i, /\bmakeup\b/i, /\bskincare\b/i],
+      },
+      {
+        id: 'dresses',
+        label: 'Dresses',
+        match: [/\bdresses?\b/i, /\bjumpsuits?\b/i],
+      },
+      {
+        id: 'dupattas',
+        label: 'Dupattas',
+        match: [/\bdupatta/i, /\bshawl/i, /\bveil/i],
+      },
+      {
+        id: 'sale',
+        label: 'Sale',
+        match: [/-off$/i, /\bsale\b/i, /-sale\b/i],
+      },
+    ];
 
+    let collections = [];
     try {
-      const response = await client.post('', { query, variables: { handle } });
-      const collection = response.data.data.collection;
-      if (!collection) return [];
-
-      return collection.products.edges.map(edge => {
-        const node = edge.node;
-        const price = parseFloat(node.variants.edges[0]?.node.price.amount || 0);
-        const originalPrice = parseFloat(node.variants.edges[0]?.node.compareAtPrice?.amount || 0);
-        
-        return {
-          id: node.handle,
-          title: node.title,
-          price: price,
-          originalPrice: originalPrice > price ? originalPrice : undefined,
-          discountPercent: originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : undefined,
-          image: node.images.edges[0]?.node.url || '',
-          gallery: node.images.edges.map(e => e.node.url),
-          category: node.productType.toLowerCase().includes('men') ? 'men' : 'women',
-          description: node.description,
-          brand: node.vendor,
-          handle: node.handle
-        };
+      const { data } = await client().get('/collections.json', {
+        params: { limit: 250 },
       });
+      collections = (data.collections || [])
+        .filter((c) => c.image?.src)
+        .map((c) => ({
+          handle: c.handle,
+          title: c.title,
+          image: c.image.src,
+          productsCount: c.products_count || 0,
+        }));
     } catch (error) {
-      console.error(`Error fetching products for collection ${handle}:`, error.message);
-      throw error;
+      console.error('[shopify] getCategoryShortcuts:', error.message);
+      return [];
     }
-  }
+
+    const result = [];
+    for (const type of TYPES) {
+      const matches = collections.filter((c) =>
+        type.match.some(
+          (re) => re.test(c.handle) || re.test(c.title),
+        ),
+      );
+      if (!matches.length) continue;
+      // Pick the collection with the most products (most representative).
+      matches.sort((a, b) => b.productsCount - a.productsCount);
+      const best = matches[0];
+      result.push({
+        id: type.id,
+        label: type.label,
+        handle: best.handle,
+        image: best.image,
+        productsCount: best.productsCount,
+      });
+    }
+    return result;
+  },
+
+  getProductsByCollection: async (handle) => {
+    try {
+      const { data } = await client().get(
+        `/collections/${encodeURIComponent(handle)}/products.json`,
+        { params: { limit: 50 } },
+      );
+      return (data.products || []).map(mapProduct).filter(Boolean);
+    } catch (error) {
+      console.error(
+        `[shopify] getProductsByCollection(${handle}):`,
+        error.message,
+      );
+      return [];
+    }
+  },
 };
 
 module.exports = shopifyService;

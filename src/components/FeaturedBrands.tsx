@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { featuredBrands } from '../data';
-import { colors, radius, spacing, typography } from '../theme';
+import { useHomeFeed } from '../hooks/useProducts';
+import { colors, radius, shadows, spacing, typography } from '../theme';
 
 type LogoStyle = {
   fontFamily: string;
@@ -24,9 +25,25 @@ const logoStyles: Record<string, LogoStyle> = {
 };
 
 export const FeaturedBrands = () => {
+  const { data: feed, source } = useHomeFeed();
+
+  const brands = useMemo(() => {
+    if (source !== 'live') return featuredBrands;
+    const all = [...feed.popularWomen, ...feed.popularMen];
+    const seen = new Set<string>();
+    const list: { id: string; name: string }[] = [];
+    for (const p of all) {
+      const name = (p.brand || '').trim();
+      if (!name || seen.has(name.toLowerCase())) continue;
+      seen.add(name.toLowerCase());
+      list.push({ id: name, name });
+    }
+    return list.length ? list : featuredBrands;
+  }, [feed, source]);
+
   return (
     <View style={styles.grid}>
-      {featuredBrands.map((b) => {
+      {brands.map((b) => {
         const s = logoStyles[b.name] ?? {
           fontFamily: 'PlayfairDisplay_700Bold',
           fontSize: 16,
@@ -66,6 +83,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.sm,
+    ...shadows.soft,
   },
   label: {
     color: colors.text,

@@ -28,14 +28,16 @@ export const Header = ({
   return (
     <View style={styles.wrapper}>
       <View style={styles.announcementBar}>
+        <View style={styles.announcementDot} />
         <Text style={styles.announcementText}>
           NEW RELEASES: <Text style={{ color: colors.gold }}>EASTERN LUXURY '26</Text>
         </Text>
+        <View style={styles.announcementDot} />
       </View>
 
       <View style={styles.topRow}>
-        <Pressable hitSlop={12}>
-          <Ionicons name="menu-outline" size={26} color={colors.black} />
+        <Pressable hitSlop={12} style={styles.iconCircle}>
+          <Ionicons name="menu-outline" size={24} color={colors.black} />
         </Pressable>
 
         <View style={styles.logoContainer}>
@@ -102,12 +104,21 @@ const styles = StyleSheet.create({
   announcementBar: {
     backgroundColor: colors.black,
     paddingVertical: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  announcementDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.gold,
   },
   announcementText: {
     ...typography.tiny,
     color: colors.white,
-    letterSpacing: 2,
+    letterSpacing: 2.5,
     fontWeight: '700',
   },
   topRow: {

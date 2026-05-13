@@ -18,6 +18,7 @@ export type Product = {
   color?: string;
   specs?: { label: string; value: string }[];
   brand?: string;
+  type?: string;
 };
 
 export type Collection = {

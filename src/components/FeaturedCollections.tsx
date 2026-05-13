@@ -7,24 +7,33 @@ import {
   Text,
   View,
 } from 'react-native';
-import { featuredCollections } from '../data';
-import { colors, radius, spacing, typography } from '../theme';
+import { featuredCollections as mockCollections } from '../data';
+import { useCollections } from '../hooks/useProducts';
+import { colors, radius, shadows, spacing, typography } from '../theme';
 
 type Props = {
   onPress?: (collectionId: string, title: string) => void;
 };
 
 export const FeaturedCollections = ({ onPress }: Props) => {
+  const { data: liveCollections, source } = useCollections();
+  const collections =
+    source === 'live' && liveCollections.length
+      ? liveCollections
+      : mockCollections;
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.row}
     >
-      {featuredCollections.map((c) => (
+      {collections.map((c) => (
         <Pressable
           key={c.id}
-          style={styles.card}
+          style={({ pressed }) => [
+            styles.card,
+            pressed && { transform: [{ scale: 0.98 }] },
+          ]}
           onPress={() => onPress?.(c.id, c.title)}
         >
           <ImageBackground
@@ -32,9 +41,13 @@ export const FeaturedCollections = ({ onPress }: Props) => {
             style={styles.image}
             imageStyle={styles.imageStyle}
           >
-            <View style={styles.overlay} />
+            <View style={styles.overlayTop} />
+            <View style={styles.overlayBottom} />
             <View style={styles.titleWrap}>
-              <Text style={styles.title}>{c.title}</Text>
+              <Text style={styles.eyebrow}>COLLECTION</Text>
+              <Text style={styles.title} numberOfLines={2}>
+                {c.title}
+              </Text>
               <View style={styles.divider} />
               <Text style={styles.cta}>EXPLORE  →</Text>
             </View>
@@ -52,11 +65,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   card: {
-    width: 230,
-    height: 320,
-    borderRadius: radius.lg,
+    width: 240,
+    height: 340,
+    borderRadius: radius.xl,
     overflow: 'hidden',
     backgroundColor: colors.surface,
+    ...shadows.card,
   },
   image: {
     flex: 1,
@@ -65,29 +79,49 @@ const styles = StyleSheet.create({
   imageStyle: {
     resizeMode: 'cover',
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.30)',
+  overlayTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '40%',
+    backgroundColor: 'rgba(0,0,0,0.08)',
+  },
+  overlayBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '70%',
+    backgroundColor: 'rgba(0,0,0,0.50)',
   },
   titleWrap: {
     padding: spacing.lg,
     alignItems: 'flex-start',
   },
+  eyebrow: {
+    ...typography.tiny,
+    color: colors.gold,
+    letterSpacing: 3,
+    marginBottom: spacing.sm,
+  },
   title: {
     ...typography.h1,
     color: colors.white,
-    fontSize: 22,
+    fontSize: 24,
+    textTransform: 'capitalize',
   },
   divider: {
-    width: 24,
-    height: 1.5,
-    backgroundColor: colors.white,
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
+    width: 28,
+    height: 2,
+    backgroundColor: colors.gold,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
   },
   cta: {
     ...typography.tiny,
     color: colors.white,
-    letterSpacing: 2,
+    letterSpacing: 2.5,
+    fontWeight: '700',
   },
 });

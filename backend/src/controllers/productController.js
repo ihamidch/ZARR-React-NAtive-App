@@ -39,9 +39,19 @@ const getProductsByCollection = async (req, res) => {
   }
 };
 
+const getCategoryShortcuts = async (req, res) => {
+  try {
+    const types = await shopifyService.getCategoryShortcuts();
+    res.json(types);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching category shortcuts', error: error.message });
+  }
+};
+
 module.exports = {
   getProducts,
   getProductByHandle,
   getCollections,
   getProductsByCollection,
+  getCategoryShortcuts,
 };

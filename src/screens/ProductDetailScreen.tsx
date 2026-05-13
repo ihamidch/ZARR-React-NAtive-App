@@ -22,7 +22,8 @@ import {
 } from '../data';
 import { ProductCard } from '../components/ProductCard';
 import { Footer } from '../components/Footer';
-import { useProduct } from '../hooks/useProducts';
+import { DataSourceBadge } from '../components/DataSourceBadge';
+import { useHomeFeed, useProduct } from '../hooks/useProducts';
 import { useAuth } from '../context/AuthContext';
 import type { ProductDetailScreenProps } from '../types/navigation';
 import { colors, radius, spacing, typography } from '../theme';
@@ -41,6 +42,7 @@ export const ProductDetailScreen = ({
 }: ProductDetailScreenProps) => {
   const { productId } = route.params;
   const { data: product, status, refresh, source } = useProduct(productId);
+  const { data: feed, source: feedSource } = useHomeFeed();
   const { isAuthenticated } = useAuth();
 
   const collection = product?.collectionId
@@ -67,20 +69,32 @@ export const ProductDetailScreen = ({
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
 
+  // Prefer live Shopify products for related rails; fall back to mock only
+  // when the live feed is unavailable.
+  const livePool = useMemo(
+    () =>
+      feedSource === 'live'
+        ? [...feed.popularWomen, ...feed.popularMen]
+        : mockAllProducts,
+    [feed.popularMen, feed.popularWomen, feedSource],
+  );
+
   const related = useMemo(() => {
     if (!product) return [];
-    return mockAllProducts
-      .filter((p) => p.category === product.category && p.id !== product.id)
-      .slice(0, 8);
-  }, [product]);
+    const sameCategory = livePool.filter(
+      (p) => p.category === product.category && p.id !== product.id,
+    );
+    if (sameCategory.length) return sameCategory.slice(0, 8);
+    return livePool.filter((p) => p.id !== product.id).slice(0, 8);
+  }, [livePool, product]);
 
   const recentlyViewed = useMemo(() => {
     if (!product) return [];
-    return mockAllProducts
+    return livePool
       .filter((p) => p.id !== product.id)
       .slice(-6)
       .reverse();
-  }, [product]);
+  }, [livePool, product]);
 
 
   const gallery = product?.gallery ?? (product ? [product.image] : []);
@@ -144,6 +158,13 @@ export const ProductDetailScreen = ({
           </Pressable>
         </View>
       </View>
+
+      <DataSourceBadge
+        source={source}
+        status={status}
+        label={`Shopify · ${productId}`}
+        onPress={refresh}
+      />
 
       {status === 'loading' && !product ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

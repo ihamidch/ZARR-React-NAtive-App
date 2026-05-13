@@ -20,6 +20,8 @@ import { DarkBanner } from '../components/DarkBanner';
 import { OffersSection } from '../components/OffersSection';
 import { Footer } from '../components/Footer';
 import { Section } from '../components/Section';
+import { DataSourceBadge } from '../components/DataSourceBadge';
+import { ShopByType } from '../components/ShopByType';
 import type { HomeScreenProps } from '../types/navigation';
 import { colors, spacing, typography } from '../theme';
 import { useHomeFeed } from '../hooks/useProducts';
@@ -57,6 +59,12 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
         onTabPress={goTab}
         isAuthenticated={isAuthenticated}
       />
+      <DataSourceBadge
+        source={source}
+        status={status}
+        label="zarr.com.pk"
+        onPress={refresh}
+      />
 
       <ScrollView
         style={styles.scroll}
@@ -93,6 +101,14 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
             cta="SHOP THE EDIT"
             image="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1200&q=80"
           />
+        </Section>
+
+        <Section background={colors.sectionWhite} paddingBottom={8}>
+          <SectionHeader
+            title="Shop By Type"
+            subtitle="Accessories · Eastern · Western · Lawn · Kids · Sale"
+          />
+          <ShopByType onPress={goCollection} />
         </Section>
 
         <Section background={colors.sectionWhite}>

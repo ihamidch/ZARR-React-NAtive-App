@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ProductCard } from '../components/ProductCard';
 import { Footer } from '../components/Footer';
+import { DataSourceBadge } from '../components/DataSourceBadge';
 import { useCollectionProducts } from '../hooks/useProducts';
 import type { CollectionScreenProps } from '../types/navigation';
 import { colors, radius, spacing, typography } from '../theme';
@@ -248,6 +249,13 @@ export const CollectionScreen = ({
           </Pressable>
         </View>
       </View>
+
+      <DataSourceBadge
+        source={source}
+        status={status}
+        label={`Shopify · ${collectionId}`}
+        onPress={refresh}
+      />
 
       <FlatList
         data={filteredProducts}

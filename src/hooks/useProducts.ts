@@ -44,6 +44,7 @@ const normaliseProduct = (raw: any): Product => ({
   color: raw.color,
   specs: Array.isArray(raw.specs) ? raw.specs : undefined,
   brand: raw.brand,
+  type: raw.type,
 });
 
 const normaliseCollection = (raw: any): Collection => ({
@@ -87,15 +88,22 @@ export const useHomeFeed = (): Result<HomeFeed> => {
         return;
       }
       const products = raw.map(normaliseProduct);
-      const popularWomen = products.filter((p) => p.category === 'women');
-      const popularMen = products.filter((p) => p.category === 'men');
-      const saleWomen = popularWomen.filter((p) => !!p.discountPercent);
-      const saleMen = popularMen.filter((p) => !!p.discountPercent);
+      let women = products.filter((p) => p.category === 'women');
+      let men = products.filter((p) => p.category === 'men');
+      // If one category is empty, reuse the other so every rail stays live.
+      if (!women.length && men.length) women = men;
+      if (!men.length && women.length) men = women;
+      const onSale = (list: Product[]) =>
+        list.filter((p) => !!p.discountPercent);
+      // If the live store has no discounts, surface a curated "new in" slice
+      // instead so the sale rails are still populated with REAL products.
+      const saleWomen = onSale(women).length ? onSale(women) : women.slice(0, 6);
+      const saleMen = onSale(men).length ? onSale(men) : men.slice(0, 6);
       setData({
-        popularWomen: popularWomen.length ? popularWomen : mockPopWomen,
-        popularMen: popularMen.length ? popularMen : mockPopMen,
-        saleWomen: saleWomen.length ? saleWomen : mockSaleWomen,
-        saleMen: saleMen.length ? saleMen : mockSaleMen,
+        popularWomen: women,
+        popularMen: men,
+        saleWomen,
+        saleMen,
       });
       setSource('live');
       setStatus('ready');
@@ -142,20 +150,47 @@ export const useCollectionProducts = (
     setError(null);
     setCollection(mockGetCollection(collectionId));
     try {
+      // Sale rails are derived from all products with a discount.
+      const isSale = collectionId.endsWith('-sale');
+
+      // 1) Prefer the real Shopify collection endpoint for the given handle
+      //    (works for men/women/kids/unisex and any custom collection).
       let raw: any[] = [];
-      if (isCategory) {
-        const all: any[] = await productApi.getProducts();
-        raw = (all || []).filter((p) =>
-          collectionId === 'kids'
-            ? false
-            : (p.category ?? '').toLowerCase() === collectionId,
-        );
-      } else if (collectionId.endsWith('-sale')) {
-        const all: any[] = await productApi.getProducts();
-        raw = (all || []).filter((p) => p.discountPercent);
-      } else {
-        raw = await productApi.getCollectionProducts(collectionId);
+      if (!isSale) {
+        try {
+          raw = await productApi.getCollectionProducts(collectionId);
+        } catch {
+          raw = [];
+        }
       }
+
+      // 2) If that came back empty, fall back to filtering all products.
+      if ((!raw || raw.length === 0) && (isCategory || isSale)) {
+        const all: any[] = await productApi.getProducts();
+        if (isSale) {
+          raw = (all || []).filter((p) => p.discountPercent);
+        } else if (collectionId !== 'kids') {
+          raw = (all || []).filter(
+            (p) => (p.category ?? '').toLowerCase() === collectionId,
+          );
+        }
+      }
+
+      // Live collection metadata for banner + title.
+      try {
+        const liveCollections: any[] = await productApi.getCollections();
+        const matched = (liveCollections || []).find(
+          (c) =>
+            (c.handle ?? c.id ?? '').toLowerCase() ===
+            collectionId.toLowerCase(),
+        );
+        if (matched) {
+          setCollection(normaliseCollection(matched));
+        }
+      } catch {
+        // keep mock collection metadata
+      }
+
       if (!Array.isArray(raw) || raw.length === 0) {
         setProducts(mockResolve());
         setSource('mock');
@@ -220,6 +255,48 @@ export const useProduct = (productId: string): Result<Product | undefined> => {
   }, [load]);
 
   return { data: product, status, error, source, refresh: load };
+};
+
+export type CategoryShortcut = {
+  id: string;
+  label: string;
+  handle: string;
+  image: string;
+  productsCount?: number;
+};
+
+export const useCategoryShortcuts = (): Result<CategoryShortcut[]> => {
+  const [data, setData] = useState<CategoryShortcut[]>([]);
+  const [status, setStatus] = useState<Status>('loading');
+  const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<'live' | 'mock'>('mock');
+
+  const load = useCallback(async () => {
+    setStatus('loading');
+    setError(null);
+    try {
+      const raw: any[] = await productApi.getCategoryShortcuts();
+      if (!Array.isArray(raw) || raw.length === 0) {
+        setData([]);
+        setSource('mock');
+      } else {
+        setData(raw as CategoryShortcut[]);
+        setSource('live');
+      }
+      setStatus('ready');
+    } catch (err: any) {
+      setData([]);
+      setSource('mock');
+      setError(err?.message ?? null);
+      setStatus('ready');
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return { data, status, error, source, refresh: load };
 };
 
 export const useCollections = (): Result<Collection[]> => {

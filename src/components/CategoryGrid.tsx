@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   ImageBackground,
   Pressable,
@@ -6,19 +6,49 @@ import {
   Text,
   View,
 } from 'react-native';
-import { categories } from '../data';
-import { colors, radius, spacing, typography } from '../theme';
+import { categories as mockCategories } from '../data';
+import { useCollections } from '../hooks/useProducts';
+import { colors, radius, shadows, spacing, typography } from '../theme';
 
 type Props = {
   onPress?: (categoryId: string, title: string) => void;
 };
 
+// Top-level shop categories surfaced as image tiles. When the Shopify
+// store exposes collections with the right handles (women / men / kids /
+// unisex / sale), prefer those images so the grid mirrors the live store.
+const FALLBACK_HANDLES = ['women', 'men', 'unisex', 'kids', 'sale'];
+
 export const CategoryGrid = ({ onPress }: Props) => {
+  const { data: liveCollections, source } = useCollections();
+
+  const categories = useMemo(() => {
+    if (source !== 'live' || !liveCollections.length) return mockCategories;
+    const list = FALLBACK_HANDLES.map((handle) => {
+      const live = liveCollections.find(
+        (c) => c.id.toLowerCase() === handle,
+      );
+      const mock = mockCategories.find((c) => c.id === handle);
+      if (!live && !mock) return null;
+      return {
+        id: handle,
+        title: live?.title || mock?.title || handle,
+        image: live?.image || mock?.image || '',
+      };
+    }).filter(Boolean) as { id: string; title: string; image: string }[];
+    return list.length ? list : mockCategories;
+  }, [liveCollections, source]);
+
   const [first, ...rest] = categories;
+  if (!first) return null;
   return (
     <View style={styles.wrapper}>
       <Pressable
-        style={[styles.card, styles.cardLarge]}
+        style={({ pressed }) => [
+          styles.card,
+          styles.cardLarge,
+          pressed && { transform: [{ scale: 0.99 }] },
+        ]}
         onPress={() => onPress?.(first.id, first.title)}
       >
         <ImageBackground
@@ -26,9 +56,13 @@ export const CategoryGrid = ({ onPress }: Props) => {
           style={styles.image}
           imageStyle={styles.imageStyle}
         >
-          <View style={styles.overlay} />
+          <View style={styles.overlayTop} />
+          <View style={styles.overlayBottom} />
           <View style={styles.labelWrap}>
-            <Text style={styles.eyebrow}>SHOP</Text>
+            <View style={styles.eyebrowRow}>
+              <View style={styles.eyebrowLine} />
+              <Text style={styles.eyebrow}>SHOP</Text>
+            </View>
             <Text style={styles.label}>{first.title}</Text>
           </View>
         </ImageBackground>
@@ -37,7 +71,11 @@ export const CategoryGrid = ({ onPress }: Props) => {
         {rest.map((cat) => (
           <Pressable
             key={cat.id}
-            style={[styles.card, styles.cardSmall]}
+            style={({ pressed }) => [
+              styles.card,
+              styles.cardSmall,
+              pressed && { transform: [{ scale: 0.98 }] },
+            ]}
             onPress={() => onPress?.(cat.id, cat.title)}
           >
             <ImageBackground
@@ -45,9 +83,13 @@ export const CategoryGrid = ({ onPress }: Props) => {
               style={styles.image}
               imageStyle={styles.imageStyle}
             >
-              <View style={styles.overlay} />
+              <View style={styles.overlayTop} />
+              <View style={styles.overlayBottom} />
               <View style={styles.labelWrap}>
-                <Text style={styles.eyebrow}>SHOP</Text>
+                <View style={styles.eyebrowRow}>
+                  <View style={styles.eyebrowLine} />
+                  <Text style={styles.eyebrow}>SHOP</Text>
+                </View>
                 <Text style={styles.labelSmall}>{cat.title}</Text>
               </View>
             </ImageBackground>
@@ -69,16 +111,18 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   card: {
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     overflow: 'hidden',
+    backgroundColor: colors.surface,
+    ...shadows.card,
   },
   cardLarge: {
     width: '100%',
-    height: 220,
+    height: 230,
   },
   cardSmall: {
     flex: 1,
-    height: 180,
+    height: 190,
   },
   image: {
     flex: 1,
@@ -87,29 +131,52 @@ const styles = StyleSheet.create({
   imageStyle: {
     resizeMode: 'cover',
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.32)',
+  overlayTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '45%',
+    backgroundColor: 'rgba(0,0,0,0.08)',
+  },
+  overlayBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '65%',
+    backgroundColor: 'rgba(0,0,0,0.48)',
   },
   labelWrap: {
     padding: spacing.lg,
     alignItems: 'flex-start',
   },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  eyebrowLine: {
+    width: 18,
+    height: 1,
+    backgroundColor: colors.gold,
+  },
   eyebrow: {
     ...typography.tiny,
-    color: colors.white,
+    color: colors.gold,
     letterSpacing: 3,
-    opacity: 0.85,
-    marginBottom: 4,
   },
   label: {
     ...typography.hero,
     color: colors.white,
-    fontSize: 32,
+    fontSize: 34,
+    textTransform: 'capitalize',
   },
   labelSmall: {
     ...typography.h1,
     color: colors.white,
     fontSize: 22,
+    textTransform: 'capitalize',
   },
 });
