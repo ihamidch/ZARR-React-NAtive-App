@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../context/CartContext';
 import { useNavigation } from '@react-navigation/native';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, radius, spacing, typography, fonts } from '../theme';
 import { formatPrice } from '../data';
 import { CartScreenProps } from '../types/navigation';
 
@@ -42,7 +42,7 @@ export const CartScreen: React.FC = () => {
         </View>
 
         <View style={styles.emptyContainer}>
-          <Ionicons name="bag-outline" size={80} color={colors.textTertiary} />
+          <Ionicons name="bag-outline" size={80} color={colors.textMuted} />
           <Text style={styles.emptyTitle}>Your bag is empty</Text>
           <Text style={styles.emptySubtitle}>
             Looks like you haven't added anything to your bag yet.
@@ -79,7 +79,7 @@ export const CartScreen: React.FC = () => {
                   {item.title}
                 </Text>
                 <Pressable onPress={() => removeFromCart(item.id)}>
-                  <Ionicons name="close" size={20} color={colors.textTertiary} />
+                  <Ionicons name="close" size={20} color={colors.textMuted} />
                 </Pressable>
               </View>
               
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   headerTitle: {
-    fontFamily: typography.playfair.bold,
+    fontFamily: fonts.display,
     fontSize: 18,
     color: colors.text,
     textTransform: 'uppercase',
@@ -164,10 +164,10 @@ const styles = StyleSheet.create({
   },
   cartItem: {
     flexDirection: 'row',
-    marginBottom: spacing.l,
+    marginBottom: spacing.lg,
     backgroundColor: colors.surface,
-    borderRadius: radius.m,
-    padding: spacing.s,
+    borderRadius: radius.md,
+    padding: spacing.sm,
     // Add subtle shadow for premium feel
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   itemImage: {
     width: 100,
     height: 130,
-    borderRadius: radius.s,
+    borderRadius: radius.sm,
     backgroundColor: colors.border,
   },
   itemDetails: {
@@ -193,26 +193,26 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   itemTitle: {
-    fontFamily: typography.inter.medium,
+    fontFamily: fonts.bodyMedium,
     fontSize: 15,
     color: colors.text,
     flex: 1,
-    marginRight: spacing.s,
+    marginRight: spacing.sm,
   },
   itemVariant: {
-    fontFamily: typography.inter.regular,
+    fontFamily: fonts.body,
     fontSize: 13,
-    color: colors.textSecondary,
+    color: colors.textMuted,
     marginTop: 4,
   },
   itemFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.s,
+    marginTop: spacing.sm,
   },
   itemPrice: {
-    fontFamily: typography.inter.bold,
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
     color: colors.text,
   },
@@ -221,27 +221,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.s,
+    borderRadius: radius.sm,
   },
   qtyButton: {
     padding: 6,
   },
   qtyText: {
-    fontFamily: typography.inter.medium,
+    fontFamily: fonts.bodyMedium,
     fontSize: 14,
     color: colors.text,
     paddingHorizontal: 8,
   },
   summaryContainer: {
-    marginTop: spacing.l,
+    marginTop: spacing.lg,
     padding: spacing.m,
     backgroundColor: colors.surface,
-    borderRadius: radius.m,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
   summaryTitle: {
-    fontFamily: typography.playfair.bold,
+    fontFamily: fonts.display,
     fontSize: 18,
     color: colors.text,
     marginBottom: spacing.m,
@@ -250,38 +250,38 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.s,
+    marginBottom: spacing.sm,
   },
   summaryLabel: {
-    fontFamily: typography.inter.regular,
+    fontFamily: fonts.body,
     fontSize: 14,
-    color: colors.textSecondary,
+    color: colors.textMuted,
   },
   summaryValue: {
-    fontFamily: typography.inter.medium,
+    fontFamily: fonts.bodyMedium,
     fontSize: 14,
     color: colors.text,
   },
   totalRow: {
-    marginTop: spacing.s,
-    paddingTop: spacing.s,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   totalLabel: {
-    fontFamily: typography.inter.bold,
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
     color: colors.text,
   },
   totalValue: {
-    fontFamily: typography.inter.bold,
+    fontFamily: fonts.bodyBold,
     fontSize: 18,
     color: colors.text,
   },
   taxNote: {
-    fontFamily: typography.inter.regular,
+    fontFamily: fonts.body,
     fontSize: 12,
-    color: colors.textTertiary,
+    color: colors.textMuted,
     marginTop: spacing.xs,
     textAlign: 'right',
   },
@@ -293,12 +293,12 @@ const styles = StyleSheet.create({
   },
   checkoutButton: {
     backgroundColor: colors.text,
-    paddingVertical: spacing.m,
-    borderRadius: radius.s,
+    paddingVertical: spacing.md,
+    borderRadius: radius.sm,
     alignItems: 'center',
   },
   checkoutButtonText: {
-    fontFamily: typography.inter.bold,
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
     color: colors.background,
     letterSpacing: 1,
@@ -310,16 +310,16 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   emptyTitle: {
-    fontFamily: typography.playfair.bold,
+    fontFamily: fonts.display,
     fontSize: 22,
     color: colors.text,
-    marginTop: spacing.l,
-    marginBottom: spacing.s,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
   },
   emptySubtitle: {
-    fontFamily: typography.inter.regular,
+    fontFamily: fonts.body,
     fontSize: 16,
-    color: colors.textSecondary,
+    color: colors.textMuted,
     textAlign: 'center',
     marginBottom: spacing.xl,
     lineHeight: 24,
@@ -328,11 +328,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.text,
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.m,
-    borderRadius: radius.s,
+    paddingVertical: spacing.md,
+    borderRadius: radius.sm,
   },
   continueButtonText: {
-    fontFamily: typography.inter.bold,
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
     color: colors.text,
     letterSpacing: 1,
