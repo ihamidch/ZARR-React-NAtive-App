@@ -5,7 +5,8 @@ const fromExpoConfig =
   (Constants?.expoConfig?.extra as { apiBaseUrl?: string } | undefined)
     ?.apiBaseUrl ||
   (Constants?.manifestExtra as { apiBaseUrl?: string } | undefined)
-    ?.apiBaseUrl;
+    ?.apiBaseUrl ||
+  'https://backend-two-weld-46.vercel.app';
 
 function deriveHostFromExpo(): string | null {
   const candidates: Array<string | undefined> = [

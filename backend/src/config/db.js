@@ -9,6 +9,8 @@ const connectDB = async () => {
     return;
   }
   try {
+    const maskedUri = uri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@');
+    console.log(`[db] Connecting to ${maskedUri}...`);
     const conn = await mongoose.connect(uri);
     console.log(`[db] MongoDB connected: ${conn.connection.host}`);
   } catch (error) {
