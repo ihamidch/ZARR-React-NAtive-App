@@ -12,6 +12,7 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Account: undefined;
+  Cart: undefined;
 };
 
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -34,4 +35,8 @@ export type RegisterScreenProps = NativeStackScreenProps<
 export type AccountScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'Account'
+>;
+export type CartScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'Cart'
 >;

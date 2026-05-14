@@ -49,3 +49,14 @@ export type OfferBanner = {
   subtitle?: string;
   image: string;
 };
+
+export type CartItem = {
+  id: string; // unique ID for this specific combination of product + size + color
+  productId: string;
+  title: string;
+  price: number;
+  image: string;
+  size?: string;
+  color?: string;
+  quantity: number;
+};

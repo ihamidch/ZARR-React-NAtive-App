@@ -51,11 +51,14 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   };
 
+  const goCart = () => navigation.navigate('Cart');
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <Header
         onAccountPress={goAccount}
+        onCartPress={goCart}
         onTabPress={goTab}
         isAuthenticated={isAuthenticated}
       />

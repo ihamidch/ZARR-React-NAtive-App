@@ -12,18 +12,23 @@ import { colors, spacing, typography, radius } from '../theme';
 
 const TABS = ['WOMEN', 'MEN', 'KIDS'] as const;
 
+import { useCart } from '../context/CartContext';
+
 type HeaderProps = {
   onAccountPress?: () => void;
+  onCartPress?: () => void;
   onTabPress?: (tab: 'WOMEN' | 'MEN' | 'KIDS') => void;
   isAuthenticated?: boolean;
 };
 
 export const Header = ({
   onAccountPress,
+  onCartPress,
   onTabPress,
   isAuthenticated,
 }: HeaderProps) => {
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>('WOMEN');
+  const { itemCount } = useCart();
 
   return (
     <View style={styles.wrapper}>
@@ -57,11 +62,13 @@ export const Header = ({
             />
             {isAuthenticated ? <View style={styles.statusDot} /> : null}
           </Pressable>
-          <Pressable style={styles.iconCircle}>
+          <Pressable style={styles.iconCircle} onPress={onCartPress}>
             <Ionicons name="bag-outline" size={22} color={colors.black} />
-            <View style={styles.goldBadge}>
-              <Text style={styles.badgeText}>0</Text>
-            </View>
+            {itemCount > 0 && (
+              <View style={styles.goldBadge}>
+                <Text style={styles.badgeText}>{itemCount}</Text>
+              </View>
+            )}
           </Pressable>
         </View>
       </View>

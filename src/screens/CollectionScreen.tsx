@@ -18,6 +18,7 @@ import { ProductCard } from '../components/ProductCard';
 import { Footer } from '../components/Footer';
 import { DataSourceBadge } from '../components/DataSourceBadge';
 import { useCollectionProducts } from '../hooks/useProducts';
+import { useCart } from '../context/CartContext';
 import type { CollectionScreenProps } from '../types/navigation';
 import { colors, radius, spacing, typography } from '../theme';
 
@@ -66,6 +67,7 @@ export const CollectionScreen = ({
   route,
   navigation,
 }: CollectionScreenProps) => {
+  const { itemCount } = useCart();
   const { collectionId, title } = route.params;
   const isCategory = ['women', 'men', 'kids'].includes(collectionId);
 
@@ -244,8 +246,16 @@ export const CollectionScreen = ({
           <Pressable style={styles.iconBtn}>
             <Ionicons name="search-outline" size={22} color={colors.text} />
           </Pressable>
-          <Pressable style={styles.iconBtn}>
+          <Pressable
+            style={styles.iconBtn}
+            onPress={() => navigation.navigate('Cart')}
+          >
             <Ionicons name="bag-outline" size={22} color={colors.text} />
+            {itemCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{itemCount}</Text>
+              </View>
+            )}
           </Pressable>
         </View>
       </View>
@@ -714,10 +724,27 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
   },
   modalFooterTextGhost: {
-    fontFamily: 'Inter_700Bold',
     letterSpacing: 1.5,
     fontSize: 12,
-    color: colors.text,
+    color: colors.white,
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: colors.gold,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.white,
+  },
+  badgeText: {
+    color: colors.white,
+    fontSize: 8,
+    fontWeight: 'bold',
   },
   modalFooterTextPrimary: {
     color: colors.white,

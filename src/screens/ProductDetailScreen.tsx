@@ -25,6 +25,7 @@ import { Footer } from '../components/Footer';
 import { DataSourceBadge } from '../components/DataSourceBadge';
 import { useHomeFeed, useProduct } from '../hooks/useProducts';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import type { ProductDetailScreenProps } from '../types/navigation';
 import { colors, radius, spacing, typography } from '../theme';
 
@@ -102,6 +103,8 @@ export const ProductDetailScreen = ({
   const sku = product ? skuFromProductId(product.id) : '';
   const skuSuffix = sizes[0]?.toLowerCase().includes('piece') ? '(3-PCS)' : '';
 
+  const { addToCart } = useCart();
+
   const onAddToCart = () => {
     if (sizes.length > 0 && !selectedSize) {
       Alert.alert(
@@ -110,12 +113,14 @@ export const ProductDetailScreen = ({
       );
       return;
     }
-    Alert.alert(
-      'Added to cart',
-      `${product?.title || 'Product'}\n${selectedColor ?? ''}${
-        selectedSize ? ' · ' + selectedSize : ''
-      } · Qty ${qty}`,
-    );
+    
+    if (product) {
+      addToCart(product, qty, selectedSize, selectedColor);
+      Alert.alert(
+        'Added to cart',
+        `${product.title} has been added to your bag.`,
+      );
+    }
   };
 
   const onBuyNow = () => {
