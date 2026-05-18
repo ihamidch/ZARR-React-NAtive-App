@@ -66,13 +66,16 @@ export const ShopByType = ({ onPress }: Props) => {
           >
             <View style={styles.imageWrap}>
               {type.image ? (
-                <Image source={{ uri: type.image }} style={styles.image} />
+                <>
+                  <Image source={{ uri: type.image }} style={styles.image} />
+                  {/* Subtle tint to de-emphasize cut-off text in banners */}
+                  <View style={styles.imageTint} />
+                </>
               ) : (
                 <View style={styles.imageFallback}>
                   <Ionicons name={iconName} size={26} color={colors.gold} />
                 </View>
               )}
-              {/* Soft inner ring for premium feel */}
               <View style={styles.ring} />
             </View>
             <Text style={styles.label} numberOfLines={1}>
@@ -82,7 +85,7 @@ export const ShopByType = ({ onPress }: Props) => {
               <Text style={styles.count} numberOfLines={1}>
                 {type.productsCount > 999
                   ? `${(type.productsCount / 1000).toFixed(1)}k`
-                  : type.productsCount}
+                  : type.productsCount} items
               </Text>
             ) : null}
           </Pressable>
@@ -92,12 +95,12 @@ export const ShopByType = ({ onPress }: Props) => {
   );
 };
 
-const ITEM_SIZE = 76;
+const ITEM_SIZE = 76; // Slightly smaller for more refined look
 
 const styles = StyleSheet.create({
   row: {
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.lg,
     gap: spacing.md,
   },
   loading: {
@@ -106,7 +109,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   item: {
-    width: ITEM_SIZE + 8,
+    width: ITEM_SIZE + 12,
     alignItems: 'center',
   },
   imageWrap: {
@@ -116,11 +119,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.surface,
     ...shadows.soft,
+    marginBottom: spacing.sm,
   },
   image: {
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
+  },
+  imageTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   imageFallback: {
     width: '100%',
@@ -132,22 +140,23 @@ const styles = StyleSheet.create({
   ring: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: ITEM_SIZE / 2,
-    borderWidth: 1.5,
-    borderColor: 'rgba(182,138,92,0.35)',
+    borderWidth: 1,
+    borderColor: colors.borderStrong, // More subtle elegant ring
   },
   label: {
-    ...typography.smallMed,
+    fontFamily: 'Inter_500Medium',
     color: colors.text,
-    marginTop: 6,
     fontSize: 11,
-    letterSpacing: 0.4,
+    letterSpacing: 1,
     textAlign: 'center',
+    textTransform: 'uppercase', // Fashion standard uppercase
   },
   count: {
     ...typography.tiny,
     color: colors.textMuted,
-    fontSize: 9,
+    fontSize: 10,
     letterSpacing: 0.5,
     marginTop: 2,
+    opacity: 0.8,
   },
 });

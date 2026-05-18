@@ -21,6 +21,7 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import { RegisterScreen } from './src/screens/RegisterScreen';
 import { AccountScreen } from './src/screens/AccountScreen';
 import { CartScreen } from './src/screens/CartScreen';
+import { BrandsScreen } from './src/screens/BrandsScreen';
 import { AuthProvider } from './src/context/AuthContext';
 import { CartProvider } from './src/context/CartContext';
 import type { RootStackParamList } from './src/types/navigation';
@@ -101,6 +102,7 @@ export default function App() {
                 <Stack.Screen name="Register" component={RegisterScreen} />
                 <Stack.Screen name="Account" component={AccountScreen} />
                 <Stack.Screen name="Cart" component={CartScreen} />
+                <Stack.Screen name="Brands" component={BrandsScreen} />
               </Stack.Navigator>
             </NavigationContainer>
             <StatusBar style="dark" />

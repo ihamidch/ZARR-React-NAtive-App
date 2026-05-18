@@ -1,20 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, radius } from '../theme';
-
-const TABS = ['WOMEN', 'MEN', 'KIDS'] as const;
-
 import { useCart } from '../context/CartContext';
 
+const ANNOUNCEMENTS = [
+  "NEW RELEASES: EASTERN LUXURY '26",
+  "FREE SHIPPING ON ORDERS OVER Rs. 5000",
+  "SHOP THE SUMMER CLEARANCE SALE",
+];
+
 type HeaderProps = {
+  onMenuPress?: () => void;
   onAccountPress?: () => void;
   onCartPress?: () => void;
   onTabPress?: (tab: 'WOMEN' | 'MEN' | 'KIDS') => void;
@@ -22,81 +25,72 @@ type HeaderProps = {
 };
 
 export const Header = ({
+  onMenuPress,
   onAccountPress,
   onCartPress,
-  onTabPress,
   isAuthenticated,
 }: HeaderProps) => {
-  const [activeTab, setActiveTab] = useState<typeof TABS[number]>('WOMEN');
   const { itemCount } = useCart();
+  const [announcementIndex, setAnnouncementIndex] = useState(0);
+  const fadeAnim = useState(new Animated.Value(1))[0];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setAnnouncementIndex((prev) => (prev + 1) % ANNOUNCEMENTS.length);
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [fadeAnim]);
 
   return (
     <View style={styles.wrapper}>
+      {/* Announcement Bar */}
       <View style={styles.announcementBar}>
-        <View style={styles.announcementDot} />
-        <Text style={styles.announcementText}>
-          NEW RELEASES: <Text style={{ color: colors.gold }}>EASTERN LUXURY '26</Text>
-        </Text>
-        <View style={styles.announcementDot} />
+        <Animated.Text style={[styles.announcementText, { opacity: fadeAnim }]}>
+          {ANNOUNCEMENTS[announcementIndex]}
+        </Animated.Text>
       </View>
 
+      {/* Main Header Row */}
       <View style={styles.topRow}>
-        <Pressable hitSlop={12} style={styles.iconCircle}>
-          <Ionicons name="menu-outline" size={24} color={colors.black} />
-        </Pressable>
+        <View style={styles.leftIcons}>
+          <Pressable hitSlop={12} style={styles.iconCircle} onPress={onMenuPress}>
+            <Ionicons name="menu-outline" size={26} color={colors.black} />
+          </Pressable>
+        </View>
 
         <View style={styles.logoContainer}>
-          <Text style={[typography.brand, { color: colors.gold }]}>ZARR</Text>
-          <View style={styles.logoBottomLine} />
+          <Text style={styles.logoText}>ZARR</Text>
         </View>
 
         <View style={styles.rightIcons}>
           <Pressable style={styles.iconCircle}>
             <Ionicons name="search-outline" size={22} color={colors.black} />
           </Pressable>
-          <Pressable style={styles.iconCircle} onPress={onAccountPress}>
-            <Ionicons
-              name={isAuthenticated ? 'person' : 'person-outline'}
-              size={22}
-              color={colors.black}
-            />
-            {isAuthenticated ? <View style={styles.statusDot} /> : null}
+          <Pressable style={styles.iconCircle}>
+            <Ionicons name="heart-outline" size={22} color={colors.black} />
           </Pressable>
           <Pressable style={styles.iconCircle} onPress={onCartPress}>
             <Ionicons name="bag-outline" size={22} color={colors.black} />
             {itemCount > 0 && (
-              <View style={styles.goldBadge}>
+              <View style={styles.badge}>
                 <Text style={styles.badgeText}>{itemCount}</Text>
               </View>
             )}
           </Pressable>
         </View>
-      </View>
-
-      <View style={styles.tabRow}>
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab;
-          return (
-            <Pressable
-              key={tab}
-              onPress={() => {
-                setActiveTab(tab);
-                onTabPress?.(tab);
-              }}
-              style={styles.tabItem}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  { color: isActive ? colors.gold : colors.black },
-                ]}
-              >
-                {tab}
-              </Text>
-              {isActive && <View style={styles.activeTabIndicator} />}
-            </Pressable>
-          );
-        })}
       </View>
     </View>
   );
@@ -114,91 +108,61 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  announcementDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.gold,
   },
   announcementText: {
     ...typography.tiny,
     color: colors.white,
     letterSpacing: 2.5,
     fontWeight: '700',
+    textAlign: 'center',
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    height: 80,
+    paddingHorizontal: spacing.md,
+    height: 60,
+  },
+  leftIcons: {
+    flex: 1,
+    alignItems: 'flex-start',
   },
   logoContainer: {
+    flex: 1,
     alignItems: 'center',
   },
-  logoBottomLine: {
-    width: 45,
-    height: 2,
-    backgroundColor: colors.black, // Logo line is black
-    marginTop: -4,
+  logoText: {
+    fontFamily: 'PlayfairDisplay_700Bold',
+    fontSize: 24,
+    letterSpacing: 4,
+    color: colors.black,
   },
   rightIcons: {
+    flex: 1,
     flexDirection: 'row',
-    gap: spacing.md,
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: radius.pill,
-  },
-  goldBadge: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    backgroundColor: colors.gold,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  statusDot: {
+  badge: {
     position: 'absolute',
-    top: 7,
-    right: 7,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.gold,
+    top: 4,
+    right: 2,
+    backgroundColor: colors.black,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   badgeText: {
     color: colors.white,
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: 'bold',
   },
-  tabRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingBottom: spacing.sm,
-  },
-  tabItem: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-  },
-  tabText: {
-    ...typography.smallMed,
-    letterSpacing: 3,
-    fontWeight: '600',
-  },
-  activeTabIndicator: {
-    marginTop: 4,
-    width: 20,
-    height: 2,
-    backgroundColor: colors.gold, // Tab line turns gold when clicked
-  },
-});
+});

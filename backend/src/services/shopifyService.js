@@ -48,6 +48,27 @@ const client = () =>
     httpsAgent: ipv4Agent,
   });
 
+// Simple in-memory cache to make the app fast and avoid Shopify rate limits
+const cache = {
+  store: new Map(),
+  ttl: 5 * 60 * 1000, // 5 minutes
+  get(key) {
+    const entry = this.store.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiry) {
+      this.store.delete(key);
+      return null;
+    }
+    return entry.value;
+  },
+  set(key, value) {
+    this.store.set(key, {
+      value,
+      expiry: Date.now() + this.ttl,
+    });
+  },
+};
+
 // ---------- helpers ----------
 
 const stripHtml = (s = '') =>
@@ -407,11 +428,17 @@ const shopifyService = {
   isMockMode,
 
   getProducts: async () => {
+    const cacheKey = 'all_products';
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+
     try {
       const { data } = await client().get('/products.json', {
-        params: { limit: 50 },
+        params: { limit: 250 },
       });
-      return (data.products || []).map(mapProduct).filter(Boolean);
+      const results = (data.products || []).map(mapProduct).filter(Boolean);
+      cache.set(cacheKey, results);
+      return results;
     } catch (error) {
       console.error('[shopify] getProducts:', error.message);
       throw error;
@@ -419,11 +446,17 @@ const shopifyService = {
   },
 
   getProductByHandle: async (handle) => {
+    const cacheKey = `product_${handle}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+
     try {
       const { data } = await client().get(
         `/products/${encodeURIComponent(handle)}.json`,
       );
-      return mapProduct(data.product);
+      const result = mapProduct(data.product);
+      cache.set(cacheKey, result);
+      return result;
     } catch (error) {
       if (error.response?.status === 404) return null;
       console.error(`[shopify] getProductByHandle(${handle}):`, error.message);
@@ -432,15 +465,51 @@ const shopifyService = {
   },
 
   getCollections: async () => {
+    const cacheKey = 'collections_v3_lifestyle'; // Force refresh with new key
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+
     try {
       const { data } = await client().get('/collections.json', {
-        params: { limit: 250 },
+        params: { limit: 40 },
       });
-      // Prefer collections that have a hero image so the home rails look
-      // good; fall back to all if none of them have images.
-      const all = (data.collections || []).map(mapCollection);
-      const withImages = all.filter((c) => c.image);
-      return withImages.length ? withImages : all;
+      
+      const rawCollections = data.collections || [];
+      const collections = rawCollections.map(mapCollection);
+
+      // To ensure a "proper look" with lifestyle photography, we fetch the first 
+      // actual product image for every collection in the featured section.
+      const enrichedCollections = await Promise.all(
+        collections.slice(0, 12).map(async (c) => {
+          try {
+            // Fetch the first product to get a real lifestyle image (person wearing clothes)
+            const { data: pData } = await client().get(
+              `/collections/${encodeURIComponent(c.handle)}/products.json`,
+              { params: { limit: 1 } }
+            );
+            
+            const firstProduct = pData.products?.[0];
+            if (firstProduct && firstProduct.images?.[0]?.src) {
+              // We use the product image as the primary "lifestyle" image
+              // but keep the original collection image as the banner if needed.
+              return {
+                ...c,
+                image: firstProduct.images[0].src, 
+                bannerImage: c.image || firstProduct.images[0].src,
+              };
+            }
+          } catch (e) {
+            console.warn(`[shopify] Failed to enrichment for ${c.handle}:`, e.message);
+          }
+          return c;
+        })
+      );
+
+      // Only show collections that have an image (either their own or from a product)
+      const results = enrichedCollections.filter(c => c.image && c.image !== '');
+      
+      cache.set(cacheKey, results);
+      return results;
     } catch (error) {
       console.error('[shopify] getCollections:', error.message);
       throw error;
@@ -451,6 +520,10 @@ const shopifyService = {
   // matching collection in the store. Falls back gracefully if a given type
   // isn't represented (e.g. shops without an Accessories collection).
   getCategoryShortcuts: async () => {
+    const cacheKey = 'category_shortcuts';
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+
     const TYPES = [
       {
         id: 'women',
@@ -556,21 +629,47 @@ const shopifyService = {
         productsCount: best.productsCount,
       });
     }
+    cache.set(cacheKey, result);
     return result;
   },
 
   getProductsByCollection: async (handle) => {
+    const cacheKey = `collection_products_${handle}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+
     try {
       const { data } = await client().get(
         `/collections/${encodeURIComponent(handle)}/products.json`,
-        { params: { limit: 50 } },
+        { params: { limit: 250 } },
       );
-      return (data.products || []).map(mapProduct).filter(Boolean);
+      const results = (data.products || []).map(mapProduct).filter(Boolean);
+      cache.set(cacheKey, results);
+      return results;
     } catch (error) {
       console.error(
         `[shopify] getProductsByCollection(${handle}):`,
         error.message,
       );
+      return [];
+    },
+  getBrands: async () => {
+    try {
+      const products = await shopifyService.getProducts();
+      if (!products || !Array.isArray(products)) return [];
+      
+      // Extract unique vendors and filter out any empty ones
+      const vendors = [...new Set(products.map(p => p.vendor || p.brand).filter(Boolean))];
+      
+      // Map to a consistent brand object
+      return vendors.sort().map(name => ({
+        id: name,
+        title: name,
+        handle: name,
+        image: null // We can add logo mapping here if needed
+      }));
+    } catch (error) {
+      console.error('Error fetching brands:', error);
       return [];
     }
   },

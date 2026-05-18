@@ -22,30 +22,28 @@ type Result<T> = {
   refresh: () => Promise<void>;
 };
 
-const normaliseProduct = (raw: any): Product => ({
-  id: String(raw.id ?? raw.handle ?? Math.random()),
-  title: raw.title ?? '',
-  price: Number(raw.price ?? 0),
-  originalPrice: raw.originalPrice ? Number(raw.originalPrice) : undefined,
-  discountPercent: raw.discountPercent
-    ? Number(raw.discountPercent)
-    : undefined,
-  image: raw.image ?? raw.gallery?.[0] ?? '',
-  gallery: Array.isArray(raw.gallery) && raw.gallery.length ? raw.gallery : undefined,
-  category: raw.category === 'men' ? 'men' : 'women',
-  description: raw.description ?? undefined,
-  sizes: Array.isArray(raw.sizes) ? raw.sizes : undefined,
-  colors: Array.isArray(raw.colors) ? raw.colors : undefined,
-  collectionId: raw.collectionId ?? raw.handle ?? undefined,
-  inStock: raw.inStock,
-  taxIncluded: raw.taxIncluded ?? true,
-  fabric: raw.fabric,
-  work: raw.work,
-  color: raw.color,
-  specs: Array.isArray(raw.specs) ? raw.specs : undefined,
-  brand: raw.brand,
-  type: raw.type,
-});
+const normaliseProduct = (raw: any): Product => {
+  const img = raw.image ?? raw.gallery?.[0] ?? '';
+
+  return {
+    id: String(raw.id ?? raw.handle ?? Math.random()),
+    title: raw.title ?? '',
+    price: Number(raw.price ?? 0),
+    originalPrice: raw.originalPrice ? Number(raw.originalPrice) : undefined,
+    discountPercent: raw.discountPercent ? Number(raw.discountPercent) : undefined,
+    image: img,
+    gallery: Array.isArray(raw.gallery) && raw.gallery.length ? raw.gallery : [img],
+    category: raw.category === 'men' ? 'men' : 'women',
+    description: raw.description ?? undefined,
+    collectionId: raw.collectionId ?? raw.handle ?? undefined,
+    inStock: raw.inStock !== false,
+    brand: raw.brand,
+    type: raw.type,
+    specs: Array.isArray(raw.specs) ? raw.specs : undefined,
+    sizes: Array.isArray(raw.sizes) ? raw.sizes : undefined,
+    colors: Array.isArray(raw.colors) ? raw.colors : undefined,
+  };
+};
 
 const normaliseCollection = (raw: any): Collection => ({
   id: String(raw.id ?? raw.handle ?? Math.random()),
@@ -80,31 +78,33 @@ export const useHomeFeed = (): Result<HomeFeed> => {
     setStatus('loading');
     setError(null);
     try {
+      // We fetch 250 products once - this is much faster than 4 separate calls
       const raw: any[] = await productApi.getProducts();
+      
       if (!Array.isArray(raw) || raw.length === 0) {
         setData(MOCK_FEED);
         setSource('mock');
         setStatus('ready');
         return;
       }
+
+      // Fast mapping
       const products = raw.map(normaliseProduct);
-      let women = products.filter((p) => p.category === 'women');
-      let men = products.filter((p) => p.category === 'men');
-      // If one category is empty, reuse the other so every rail stays live.
-      if (!women.length && men.length) women = men;
-      if (!men.length && women.length) men = women;
-      const onSale = (list: Product[]) =>
-        list.filter((p) => !!p.discountPercent);
-      // If the live store has no discounts, surface a curated "new in" slice
-      // instead so the sale rails are still populated with REAL products.
-      const saleWomen = onSale(women).length ? onSale(women) : women.slice(0, 6);
-      const saleMen = onSale(men).length ? onSale(men) : men.slice(0, 6);
-      setData({
-        popularWomen: women,
-        popularMen: men,
-        saleWomen,
-        saleMen,
-      });
+      
+      const women = products.filter(p => p.category === 'women');
+      const men = products.filter(p => p.category === 'men');
+      
+      const onSale = (list: Product[]) => list.filter(p => !!p.discountPercent);
+      
+      // Smart Fallback: ensure rails are never empty if live data exists
+      const liveFeed: HomeFeed = {
+        popularWomen: women.length ? women.slice(0, 8) : mockPopWomen,
+        popularMen: men.length ? men.slice(0, 8) : mockPopMen,
+        saleWomen: onSale(women).length ? onSale(women).slice(0, 8) : women.slice(0, 8),
+        saleMen: onSale(men).length ? onSale(men).slice(0, 8) : men.slice(0, 8),
+      };
+
+      setData(liveFeed);
       setSource('live');
       setStatus('ready');
     } catch (err: any) {
@@ -165,13 +165,24 @@ export const useCollectionProducts = (
       }
 
       // 2) If that came back empty, fall back to filtering all products.
-      if ((!raw || raw.length === 0) && (isCategory || isSale)) {
+      if (!raw || raw.length === 0) {
         const all: any[] = await productApi.getProducts();
+        const allProducts = all || [];
+
         if (isSale) {
-          raw = (all || []).filter((p) => p.discountPercent);
-        } else if (collectionId !== 'kids') {
-          raw = (all || []).filter(
-            (p) => (p.category ?? '').toLowerCase() === collectionId,
+          raw = allProducts.filter((p) => p.discountPercent);
+        } else if (isCategory) {
+          if (collectionId !== 'kids') {
+            raw = allProducts.filter(
+              (p) => (p.category ?? '').toLowerCase() === collectionId,
+            );
+          }
+        } else {
+          // It's likely a brand or a custom search
+          raw = allProducts.filter(
+            (p) =>
+              (p.brand ?? '').toLowerCase() === collectionId.toLowerCase() ||
+              (p.vendor ?? '').toLowerCase() === collectionId.toLowerCase(),
           );
         }
       }
@@ -322,6 +333,50 @@ export const useCollections = (): Result<Collection[]> => {
     } catch (err: any) {
       const { featuredCollections } = await import('../data');
       setData(featuredCollections);
+      setSource('mock');
+      setError(err?.message ?? null);
+      setStatus('ready');
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return { data, status, error, source, refresh: load };
+};
+
+export type Brand = {
+  id: string;
+  title: string;
+  handle: string;
+  image: string | null;
+};
+
+export const useBrands = (): Result<Brand[]> => {
+  const [data, setData] = useState<Brand[]>([]);
+  const [status, setStatus] = useState<Status>('loading');
+  const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<'live' | 'mock'>('mock');
+
+  const load = useCallback(async () => {
+    setStatus('loading');
+    setError(null);
+    try {
+      const raw: any[] = await productApi.getBrands();
+      if (!Array.isArray(raw) || raw.length === 0) {
+        // Fallback to mock data if live empty
+        const { brands: mockBrands } = await import('../data');
+        setData(mockBrands);
+        setSource('mock');
+      } else {
+        setData(raw as Brand[]);
+        setSource('live');
+      }
+      setStatus('ready');
+    } catch (err: any) {
+      const { brands: mockBrands } = await import('../data');
+      setData(mockBrands);
       setSource('mock');
       setError(err?.message ?? null);
       setStatus('ready');

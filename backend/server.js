@@ -40,7 +40,10 @@ const connectDB = async () => {
   }
 };
 
-connectDB();
+// Make DB connection fail-safe so Shopify proxy still works
+connectDB().catch(err => {
+  console.error('[server] MongoDB connection failed, running in Shopify-only mode:', err.message);
+});
 
 app.use(cors());
 app.use(express.json());

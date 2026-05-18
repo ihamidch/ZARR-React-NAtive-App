@@ -6,9 +6,11 @@ const {
   getCollections,
   getProductsByCollection,
   getCategoryShortcuts,
+  getBrands,
 } = require('../controllers/productController');
 
 router.get('/', getProducts);
+router.get('/brands', getBrands);
 router.get('/types', getCategoryShortcuts);
 router.get('/collections', getCollections);
 router.get('/collections/:handle', getProductsByCollection);

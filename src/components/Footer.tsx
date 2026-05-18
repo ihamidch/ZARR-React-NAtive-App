@@ -5,9 +5,10 @@ import {
   Text,
   TextInput,
   View,
-  LayoutAnimation, // Added for smooth transition
+  LayoutAnimation,
   Platform,
   UIManager,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '../theme';
@@ -98,7 +99,14 @@ export const Footer = () => {
         {expandedSection === 'help' && (
           <View style={styles.accordionContent}>
             {helpLinks.map((l) => (
-              <Pressable key={l}>
+              <Pressable 
+                key={l}
+                onPress={() => {
+                  if (l === 'FAQs') {
+                    Linking.openURL('https://zarr.com.pk/');
+                  }
+                }}
+              >
                 <Text style={styles.link}>{l}</Text>
               </Pressable>
             ))}
@@ -148,11 +156,9 @@ export const Footer = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  // ... (keep your existing styles)
+const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: colors.footerBg,
+    backgroundColor: '#000000', // Black footer
     paddingTop: spacing.xxl,
   },
   brandWrap: {
@@ -162,39 +168,41 @@ const styles = StyleSheet.create({
   },
   brand: {
     fontFamily: 'PlayfairDisplay_700Bold',
-    fontSize: 32,
+    fontSize: 28,
     letterSpacing: 8,
     color: colors.white,
   },
   brandUnderline: {
-    marginTop: 4,
-    width: 38,
-    height: 1.5,
+    marginTop: 6,
+    width: 40,
+    height: 1,
     backgroundColor: colors.white,
   },
   brandTag: {
     ...typography.tiny,
-    color: '#BFBFBF',
+    color: '#999999',
     marginTop: spacing.sm,
-    letterSpacing: 3,
+    letterSpacing: 4,
   },
   newsletter: {
-    backgroundColor: colors.newsletterBg,
+    backgroundColor: '#111111',
     margin: spacing.lg,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
+    padding: spacing.xl,
+    borderRadius: radius.md,
   },
   newsletterLabel: {
     ...typography.tiny,
     color: colors.white,
     letterSpacing: 3,
     marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   newsletterSubtitle: {
     ...typography.small,
-    color: '#BBBBBB',
-    lineHeight: 19,
+    color: '#AAAAAA',
+    lineHeight: 18,
     marginBottom: spacing.md,
+    textAlign: 'center',
   },
   inputRow: {
     flexDirection: 'row',
@@ -206,56 +214,57 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
-    backgroundColor: '#262626',
+    backgroundColor: '#222222',
+    borderWidth: 1,
+    borderColor: '#333333',
     color: colors.white,
     fontFamily: 'Inter_400Regular',
-    fontSize: 14,
+    fontSize: 12,
   },
   signupBtn: {
     height: 44,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     backgroundColor: colors.white,
-    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   signupText: {
-    ...typography.tiny,
-    color: colors.text,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    color: colors.black,
     letterSpacing: 2,
   },
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    justifyContent: 'center',
   },
   checkbox: {
     width: 14,
     height: 14,
     borderWidth: 1,
-    borderColor: '#777',
+    borderColor: '#555555',
   },
   checkboxLabel: {
-    ...typography.small,
-    color: '#9C9C9C',
-    flex: 1,
+    ...typography.tiny,
+    color: '#888888',
   },
   section: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#222', // Subtle divider
+    borderBottomColor: '#222222', 
   },
-  // NEW STYLES FOR TOGGLE
   accordionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: spacing.sm,
   },
   accordionContent: {
     marginTop: spacing.sm,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.md,
   },
   sectionTitle: {
     ...typography.tiny,
@@ -263,34 +272,30 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
   },
   link: {
-    ...typography.body,
-    color: '#BFBFBF',
-    paddingVertical: spacing.xs,
+    ...typography.small,
+    color: '#AAAAAA',
+    paddingVertical: spacing.sm,
   },
   socialRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
+    gap: spacing.md,
+    marginTop: spacing.md,
   },
   socialBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: '#444',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#111111',
     alignItems: 'center',
     justifyContent: 'center',
   },
   bottomBar: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#333',
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.md,
+    paddingVertical: spacing.xl,
     alignItems: 'center',
   },
   copy: {
-    ...typography.small,
-    color: '#777',
+    ...typography.tiny,
+    color: '#666666',
+    letterSpacing: 1,
   },
-});
+});

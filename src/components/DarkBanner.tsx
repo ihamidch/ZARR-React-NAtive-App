@@ -15,6 +15,7 @@ type Props = {
   cta?: string;
   image?: string;
   height?: number;
+  onPress?: () => void;
 };
 
 export const DarkBanner = ({
@@ -24,6 +25,7 @@ export const DarkBanner = ({
   cta,
   image,
   height = 160,
+  onPress,
 }: Props) => {
   const content = (
     <View style={styles.content}>
@@ -31,7 +33,7 @@ export const DarkBanner = ({
       <Text style={styles.big}>{big}</Text>
       {small ? <Text style={styles.small}>{small}</Text> : null}
       {cta ? (
-        <Pressable style={styles.cta}>
+        <Pressable style={styles.cta} onPress={onPress}>
           <Text style={styles.ctaText}>{cta}</Text>
         </Pressable>
       ) : null}
@@ -60,9 +62,7 @@ export const DarkBanner = ({
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginHorizontal: spacing.lg,
-    marginVertical: spacing.sm,
-    borderRadius: radius.lg,
+    width: '100%',
     overflow: 'hidden',
   },
   bg: {
@@ -75,42 +75,42 @@ const styles = StyleSheet.create({
   },
   tint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8,8,8,0.65)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   content: {
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
   },
   eyebrow: {
     ...typography.tiny,
-    color: colors.gold,
-    letterSpacing: 4,
-    marginBottom: spacing.xs,
+    color: colors.white,
+    letterSpacing: 6,
+    marginBottom: spacing.sm,
   },
   big: {
     fontFamily: 'PlayfairDisplay_700Bold',
-    fontSize: 24,
+    fontSize: 32,
     color: colors.white,
-    letterSpacing: 3,
+    letterSpacing: 2,
     textAlign: 'center',
+    textTransform: 'uppercase',
   },
   small: {
     ...typography.tiny,
-    color: '#D6CDBE',
-    marginTop: spacing.xs,
-    letterSpacing: 3,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: spacing.sm,
+    letterSpacing: 4,
   },
   cta: {
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.white,
-    borderRadius: radius.pill,
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.white,
   },
   ctaText: {
-    ...typography.tiny,
-    color: colors.white,
-    letterSpacing: 2,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    color: colors.black,
+    letterSpacing: 3,
   },
 });

@@ -67,6 +67,7 @@ export const productApi = {
   getProductDetail: async (handle: string) =>
     (await api.get(`/products/${handle}`)).data,
   getCategoryShortcuts: async () => (await api.get('/products/types')).data,
+  getBrands: async () => (await api.get('/products/brands')).data,
 };
 
 export const authApi = {

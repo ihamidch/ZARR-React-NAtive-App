@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { featuredBrands } from '../data';
-import { useHomeFeed } from '../hooks/useProducts';
+import { useBrands } from '../hooks/useProducts';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 
 type LogoStyle = {
@@ -24,38 +24,40 @@ const logoStyles: Record<string, LogoStyle> = {
   'TAANA BAANA': { fontFamily: 'PlayfairDisplay_400Regular', letterSpacing: 2, fontSize: 13 },
 };
 
-export const FeaturedBrands = () => {
-  const { data: feed, source } = useHomeFeed();
+type Props = {
+  onPress: (brandName: string) => void;
+  limit?: number;
+};
+
+export const FeaturedBrands = ({ onPress, limit = 6 }: Props) => {
+  const { data: allBrands = [] } = useBrands();
 
   const brands = useMemo(() => {
-    if (source !== 'live') return featuredBrands;
-    const all = [...feed.popularWomen, ...feed.popularMen];
-    const seen = new Set<string>();
-    const list: { id: string; name: string }[] = [];
-    for (const p of all) {
-      const name = (p.brand || '').trim();
-      if (!name || seen.has(name.toLowerCase())) continue;
-      seen.add(name.toLowerCase());
-      list.push({ id: name, name });
-    }
-    return list.length ? list : featuredBrands;
-  }, [feed, source]);
+    return (allBrands || []).slice(0, limit);
+  }, [allBrands, limit]);
 
   return (
     <View style={styles.grid}>
       {brands.map((b) => {
-        const s = logoStyles[b.name] ?? {
+        const s = logoStyles[b.title] ?? {
           fontFamily: 'PlayfairDisplay_700Bold',
           fontSize: 16,
         };
         return (
-          <Pressable key={b.id} style={styles.card}>
+          <Pressable
+            key={b.id}
+            style={({ pressed }) => [
+              styles.card,
+              pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] },
+            ]}
+            onPress={() => onPress(b.title)}
+          >
             <Text
               style={[styles.label, s]}
               numberOfLines={1}
               adjustsFontSizeToFit
             >
-              {b.name}
+              {b.title}
             </Text>
           </Pressable>
         );
@@ -69,21 +71,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    justifyContent: 'space-between',
   },
   card: {
-    flexBasis: '31.5%',
-    flexGrow: 1,
-    aspectRatio: 16 / 11,
+    width: '31%', // Three items per row for a professional, condensed look
+    aspectRatio: 1, // Square cards look more high-end for logos
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.white,
+    marginBottom: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     ...shadows.soft,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   label: {
     color: colors.text,

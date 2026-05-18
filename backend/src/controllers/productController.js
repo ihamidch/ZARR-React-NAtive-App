@@ -48,10 +48,20 @@ const getCategoryShortcuts = async (req, res) => {
   }
 };
 
+const getBrands = async (req, res) => {
+  try {
+    const brands = await shopifyService.getBrands();
+    res.json(brands);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching brands', error: error.message });
+  }
+};
+
 module.exports = {
   getProducts,
   getProductByHandle,
   getCollections,
   getProductsByCollection,
   getCategoryShortcuts,
+  getBrands,
 };

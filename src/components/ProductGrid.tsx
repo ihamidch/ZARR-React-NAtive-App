@@ -1,9 +1,5 @@
 import React from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { ProductCard } from './ProductCard';
 import type { Product } from '../types';
 import { spacing } from '../theme';
@@ -13,35 +9,33 @@ type Props = {
   onProductPress?: (productId: string) => void;
 };
 
-export const ProductCarousel = ({ products, onProductPress }: Props) => {
+export const ProductGrid = ({ products, onProductPress }: Props) => {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
-      snapToInterval={180} // 170 (width) + 10 (gap)
-      decelerationRate="fast"
-    >
+    <View style={styles.grid}>
       {products.map((p) => (
-        <View key={p.id} style={styles.cardWrapper}>
+        <View key={p.id} style={styles.itemWrapper}>
           <ProductCard
             product={p}
-            width={170}
+            width={null as any} // let it fill the wrapper
             onPress={() => onProductPress?.(p.id)}
           />
         </View>
       ))}
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContent: {
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    gap: 10,
+    gap: spacing.md,
+    justifyContent: 'space-between',
   },
-  cardWrapper: {
-    width: 170,
+  itemWrapper: {
+    width: '47.5%', // Slightly less than 50% to account for gap
+    marginBottom: spacing.md,
   },
 });
