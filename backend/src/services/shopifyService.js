@@ -392,6 +392,7 @@ const mapProduct = (p) => {
     image: images[0] || '',
     gallery: images,
     category: detectCategory(p.tags, p.product_type),
+    tags: normaliseTags(p.tags),
     brand,
     type,
     inStock: (p.variants || []).some((v) => v.available !== false),
@@ -520,7 +521,7 @@ const shopifyService = {
   // matching collection in the store. Falls back gracefully if a given type
   // isn't represented (e.g. shops without an Accessories collection).
   getCategoryShortcuts: async () => {
-    const cacheKey = 'category_shortcuts';
+    const cacheKey = 'category_shortcuts_v12_lifestyle';
     const cached = cache.get(cacheKey);
     if (cached) return cached;
 
@@ -619,14 +620,83 @@ const shopifyService = {
       );
       if (!matches.length) continue;
       // Pick the collection with the most products (most representative).
-      matches.sort((a, b) => b.productsCount - a.productsCount);
-      const best = matches[0];
+      // Pick the collection with the most products (most representative).
+      const sorted = [...matches].sort((a, b) => b.productsCount - a.productsCount);
+      const best = sorted[0];
+
+      // Enrich with the first product image to get a clean lifestyle shot (no text overlay)
+      let cleanImage = best.image;
+      let chosenHandle = best.handle;
+      let chosenProductsCount = best.productsCount;
+
+      for (const candidate of sorted) {
+        try {
+          const { data: pData } = await client().get(
+            `/collections/${encodeURIComponent(candidate.handle)}/products.json`,
+            { params: { limit: 1 } }
+          );
+          const firstProduct = pData.products?.[0];
+          if (firstProduct && firstProduct.images?.[0]?.src) {
+            cleanImage = firstProduct.images[0].src;
+            chosenHandle = candidate.handle;
+            chosenProductsCount = candidate.productsCount;
+            break;
+          }
+        } catch (e) {
+          // Try next candidate
+        }
+      }
+
+      // If we still have a text-heavy collection banner image, search all products for a lifestyle shot
+      if (cleanImage === best.image || cleanImage.includes('/collections/')) {
+        try {
+          const { data: pData } = await client().get('/products.json', {
+            params: { limit: 250 },
+          });
+          const mapped = (pData.products || []).map(mapProduct).filter(Boolean);
+          let matchProduct = mapped.find(p => {
+            const cat = String(p.category || '').toLowerCase();
+            const typeStr = String(p.type || '').toLowerCase();
+            const id = String(type.id).toLowerCase();
+            
+            const catClean = cat.replace(/[\s\-]/g, '');
+            const typeStrClean = typeStr.replace(/[\s\-]/g, '');
+            const idClean = id.replace(/[\s\-]/g, '');
+            
+            const match = catClean === idClean || 
+                          typeStrClean.includes(idClean) || 
+                          (p.tags && p.tags.some(t => {
+                            const cleanTag = String(t).toLowerCase().replace(/[\s\-]/g, '');
+                            return cleanTag.includes(idClean) || 
+                                   idClean.includes(cleanTag) || 
+                                   (idClean === 'loungewear' && cleanTag.includes('loung'));
+                          }));
+            return match;
+          });
+          
+          const idClean = String(type.id).toLowerCase().replace(/[\s\-]/g, '');
+          if (!matchProduct && (idClean === 'loungewear' || idClean === 'modestwear')) {
+            // Fallback to a gorgeous women's apparel lifestyle photo
+            matchProduct = mapped.find(p => String(p.category || '').toLowerCase() === 'women');
+          }
+          if (!matchProduct) {
+            matchProduct = mapped[0]; // Absolute fallback to first product
+          }
+          
+          if (matchProduct && matchProduct.image) {
+            cleanImage = matchProduct.image;
+          }
+        } catch (err) {
+          console.error('[shopify] getCategoryShortcuts fallback error:', err.message);
+        }
+      }
+
       result.push({
         id: type.id,
         label: type.label,
-        handle: best.handle,
-        image: best.image,
-        productsCount: best.productsCount,
+        handle: chosenHandle,
+        image: cleanImage,
+        productsCount: chosenProductsCount,
       });
     }
     cache.set(cacheKey, result);
@@ -652,7 +722,8 @@ const shopifyService = {
         error.message,
       );
       return [];
-    },
+    }
+  },
   getBrands: async () => {
     try {
       const products = await shopifyService.getProducts();

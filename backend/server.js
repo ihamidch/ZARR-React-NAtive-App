@@ -74,7 +74,7 @@ app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.method} ${req.path} not found` });
 });
 
-if (process.env.NODE_ENV !== 'production') {
+if (require.main === module || !process.env.VERCEL) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[server] listening on http://0.0.0.0:${PORT}`);
   });

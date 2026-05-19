@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ImageBackground,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { featuredCollections as mockCollections } from '../data';
 import { useCollections } from '../hooks/useProducts';
 import { productApi } from '../services/api';
@@ -24,15 +25,29 @@ export const FeaturedCollections = ({ onPress }: Props) => {
       : mockCollections;
 
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.row}
-    >
-      {collections.map((c) => (
-        <CollectionCard key={c.id} collection={c} onPress={onPress} />
-      ))}
-    </ScrollView>
+    <View style={styles.sectionContainer}>
+      <View style={styles.headerRow}>
+        <Text style={styles.sectionTitle}>FEATURED COLLECTIONS</Text>
+        <View style={styles.arrowContainer}>
+          <Pressable style={styles.arrowBtn}>
+            <Ionicons name="arrow-back-outline" size={16} color="#111111" />
+          </Pressable>
+          <Pressable style={styles.arrowBtn}>
+            <Ionicons name="arrow-forward-outline" size={16} color="#111111" />
+          </Pressable>
+        </View>
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.row}
+      >
+        {collections.map((c) => (
+          <CollectionCard key={c.id} collection={c} onPress={onPress} />
+        ))}
+      </ScrollView>
+    </View>
   );
 };
 
@@ -61,136 +76,105 @@ const CollectionCard = ({ collection: c, onPress }: { collection: any, onPress: 
     }
   }, [c.id, c.image]);
 
+  // Premium mock brands for luxury Pakistani aesthetic
+  const collectionBrands: Record<string, string> = {
+    'spring-edit': 'MANTO',
+    'eastern-classic': 'SANA SAFINAZ',
+    'lawn-luxe': 'BEYOND EAST',
+    'party-chic': 'KIARA OFFICIAL',
+  };
+  const brandLabel = collectionBrands[c.id] || c.description || 'ZARR SELECT';
+
   return (
     <Pressable
       style={({ pressed }) => [
-        styles.card,
-        pressed && { transform: [{ scale: 0.97 }] },
+        styles.cardContainer,
+        pressed && { transform: [{ scale: 0.985 }] },
       ]}
       onPress={() => onPress?.(c.id, c.title)}
     >
-      <ImageBackground
-        source={{ uri: displayImage }}
-        style={styles.image}
-        imageStyle={styles.imageStyle}
-      >
-        {/* Layered Gradients for Professional Contrast */}
-        <View style={styles.gradientBottom} />
-        <View style={styles.gradientBottomDeep} />
-        
-        <View style={styles.contentOverlay}>
-          <View style={styles.glassTitleBox}>
-            <Text style={styles.eyebrow}>THE COLLECTION</Text>
-            <Text style={styles.title} numberOfLines={2}>
-              {c.title}
-            </Text>
-            <View style={styles.premiumDivider} />
-            <View style={styles.ctaRow}>
-              <Text style={styles.ctaText}>EXPLORE NOW</Text>
-              <View style={styles.ctaCircle}>
-                <Text style={styles.arrow}>→</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      </ImageBackground>
+      <View style={styles.cardImageWrap}>
+        <Image source={{ uri: displayImage }} style={styles.cardImage} />
+      </View>
+      <View style={styles.cardInfo}>
+        <Text style={styles.cardTitle} numberOfLines={1}>
+          {c.title.toUpperCase()}
+        </Text>
+        <Text style={styles.cardBrand}>{brandLabel.toUpperCase()}</Text>
+      </View>
     </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
-  row: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.lg,
-    paddingVertical: spacing.md,
+  sectionContainer: {
+    paddingVertical: 24,
+    backgroundColor: '#FFFFFF',
   },
-  card: {
-    width: 280,
-    height: 420,
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-    backgroundColor: colors.surfaceAlt,
-    ...shadows.floating,
-  },
-  image: {
-    flex: 1,
-  },
-  imageStyle: {
-    resizeMode: 'cover',
-  },
-  gradientBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '60%',
-    backgroundColor: 'rgba(0,0,0,0.02)',
-  },
-  gradientBottomDeep: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '40%',
-    backgroundColor: 'rgba(0,0,0,0.03)',
-  },
-  contentOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    padding: spacing.lg,
-  },
-  glassTitleBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    backdropFilter: 'blur(10px)', // For web support, native will ignore
-  },
-  eyebrow: {
-    ...typography.tiny,
-    color: colors.gold,
-    letterSpacing: 4,
-    marginBottom: spacing.xs,
-    fontWeight: '700',
-  },
-  title: {
-    ...typography.h1,
-    color: colors.white,
-    fontSize: 26,
-    lineHeight: 32,
-    textTransform: 'uppercase',
-    marginBottom: spacing.md,
-  },
-  premiumDivider: {
-    width: 40,
-    height: 2,
-    backgroundColor: colors.gold,
-    marginBottom: spacing.lg,
-  },
-  ctaRow: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
-  ctaText: {
-    ...typography.tiny,
-    color: colors.white,
-    letterSpacing: 2,
-    fontWeight: '800',
+  sectionTitle: {
+    fontFamily: 'PlayfairDisplay_700Bold',
+    fontSize: 20,
+    letterSpacing: 1,
+    color: '#111111',
   },
-  ctaCircle: {
+  arrowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  arrowBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.gold,
+    borderWidth: 1,
+    borderColor: '#E6E6E6',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
   },
-  arrow: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginTop: -2,
+  row: {
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  cardContainer: {
+    width: 176,
+  },
+  cardImageWrap: {
+    width: 176,
+    height: 236,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#F7F7F7',
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  cardInfo: {
+    paddingTop: 8,
+    paddingHorizontal: 2,
+  },
+  cardTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    color: '#111111',
+    letterSpacing: 0.5,
+  },
+  cardBrand: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    color: '#B7984A', // Gorgeous brand gold accent
+    letterSpacing: 1.2,
+    marginTop: 2,
   },
 });

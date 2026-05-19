@@ -13,6 +13,7 @@ import {
   FlatList,
   Image,
   ImageBackground,
+  Linking,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
@@ -43,6 +44,7 @@ import { FeaturedCollections } from '../components/FeaturedCollections';
 import { Footer } from '../components/Footer';
 import { ShopByType } from '../components/ShopByType';
 import { SideMenu } from '../components/SideMenu';
+import { HeroBanner } from '../components/HeroBanner';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -146,43 +148,93 @@ const getCollectionImage = (collection: Collection) =>
 const STATIC_HERO_BANNERS: HomeBanner[] = [
   {
     id: 'static-hero-1',
-    title: 'Premium Collection',
+    title: 'Women Unstitched',
     subtitle: 'Discover elegant fashion curated for you',
     cta: 'Shop Now',
-    image:
-      'https://images.unsplash.com/photo-1552062407-291826ad9542?auto=format&fit=crop&w=1600&q=90',
+    image: 'https://zarr.com.pk/cdn/shop/files/m4.webp?v=1778246304',
   },
   {
     id: 'static-hero-2',
-    title: 'Spring Arrivals',
+    title: 'Women Ready-To-Wear',
     subtitle: 'Fresh styles for the season ahead',
     cta: 'Shop Now',
-    image:
-      'https://images.unsplash.com/photo-1539613080033-0da6ca226e15?auto=format&fit=crop&w=1600&q=90',
+    image: 'https://zarr.com.pk/cdn/shop/files/m3.webp?v=1778246304',
   },
   {
     id: 'static-hero-3',
-    title: 'Luxury Edit',
+    title: 'Men Western Wear',
     subtitle: 'Timeless pieces with modern appeal',
     cta: 'Shop Now',
-    image:
-      'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=1600&q=90',
+    image: 'https://zarr.com.pk/cdn/shop/files/Men_Western_1.webp?v=1773120821',
   },
   {
     id: 'static-hero-4',
-    title: 'Elegant Styles',
+    title: 'Men Eastern Wear',
     subtitle: 'Premium fabrics and refined design',
     cta: 'Shop Now',
-    image:
-      'https://images.unsplash.com/photo-1564377728107-b1a3c17f05c7?auto=format&fit=crop&w=1600&q=90',
+    image: 'https://zarr.com.pk/cdn/shop/files/Eastern_Mobile_a0ed76f7-d854-4820-ac03-22ad124bdb54_2.webp?v=1773121283',
   },
 ];
 
+const getPremiumCollectionLifestyle = (collection: Collection, index: number) => {
+  const title = String(collection.title || '').toLowerCase();
+  const id = String(collection.id || '').toLowerCase();
+  
+  if (title.includes('men') || id.includes('men')) {
+    if (title.includes('western') || id.includes('western')) {
+      return 'https://zarr.com.pk/cdn/shop/files/Men_Western_1.webp?v=1773120821';
+    }
+    return 'https://zarr.com.pk/cdn/shop/files/Eastern_Mobile_a0ed76f7-d854-4820-ac03-22ad124bdb54_2.webp?v=1773121283';
+  }
+  if (title.includes('kids') || id.includes('kids')) {
+    return 'https://images.unsplash.com/photo-1519457431-44ccd64a579b?auto=format&fit=crop&w=1200&q=80';
+  }
+  if (title.includes('women') || id.includes('women')) {
+    if (title.includes('unstitched') || id.includes('unstitched')) {
+      return 'https://zarr.com.pk/cdn/shop/files/m4.webp?v=1778246304';
+    }
+    return 'https://zarr.com.pk/cdn/shop/files/m3.webp?v=1778246304';
+  }
+  
+  const fallbacks = [
+    'https://zarr.com.pk/cdn/shop/files/m4.webp?v=1778246304',
+    'https://zarr.com.pk/cdn/shop/files/m3.webp?v=1778246304',
+    'https://zarr.com.pk/cdn/shop/files/Men_Western_1.webp?v=1773120821',
+    'https://zarr.com.pk/cdn/shop/files/Eastern_Mobile_a0ed76f7-d854-4820-ac03-22ad124bdb54_2.webp?v=1773121283'
+  ];
+  return fallbacks[index % fallbacks.length];
+};
+
 const normalizeBanners = (
-  _feed: HomeFeedShape,
-  _collections: Collection[],
-  _products: Product[],
-): HomeBanner[] => STATIC_HERO_BANNERS;
+  feed: HomeFeedShape,
+  collections: Collection[],
+  products: Product[],
+): HomeBanner[] => {
+  if (collections && collections.length > 0) {
+    const activeCollections = collections.filter(c => getCollectionImage(c));
+    if (activeCollections.length > 0) {
+      return activeCollections.slice(0, 4).map((c, index) => {
+        const metaOptions = [
+          { eyebrow: 'NEW ARRIVALS', subtitle: 'Discover our exclusive curated arrivals' },
+          { eyebrow: 'SPRING EDIT', subtitle: 'Fresh silhouettes and polished details' },
+          { eyebrow: 'LUXURY SELECTION', subtitle: 'Timeless pieces with modern appeal' },
+          { eyebrow: 'ELEGANT STYLES', subtitle: 'Premium fabrics and refined designs' },
+        ];
+        const meta = metaOptions[index % metaOptions.length];
+        return {
+          id: `shopify-banner-${c.id}`,
+          title: c.title,
+          eyebrow: meta.eyebrow,
+          subtitle: c.description || meta.subtitle,
+          cta: 'Shop Now',
+          image: getPremiumCollectionLifestyle(c, index),
+          collectionId: c.id,
+        };
+      });
+    }
+  }
+  return STATIC_HERO_BANNERS;
+};
 
 const FadeInSection = memo(
   ({
@@ -353,127 +405,7 @@ const SectionTitle = memo(
   ),
 );
 
-const HeroCarousel = memo(
-  ({
-    banners,
-    width,
-    onCollectionPress,
-  }: {
-    banners: HomeBanner[];
-    width: number;
-    onCollectionPress: (collectionId: string, title: string) => void;
-  }) => {
-    const [activeIndex, setActiveIndex] = useState(0);
-    const listRef = useRef<FlatList<HomeBanner>>(null);
-    const activeRef = useRef(0);
-    const heroHeight = Math.max(390, Math.min(470, Math.round(width * 1.14)));
-
-    const updateActive = useCallback((index: number) => {
-      activeRef.current = index;
-      setActiveIndex(index);
-    }, []);
-
-    useEffect(() => {
-      if (banners.length < 2) return undefined;
-
-      const timer = setInterval(() => {
-        const next = (activeRef.current + 1) % banners.length;
-        listRef.current?.scrollToIndex({ index: next, animated: true });
-        updateActive(next);
-      }, 4200);
-
-      return () => clearInterval(timer);
-    }, [banners.length, updateActive]);
-
-    const onMomentumScrollEnd = useCallback(
-      (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-        const next = Math.round(event.nativeEvent.contentOffset.x / width);
-        updateActive(Math.max(0, Math.min(next, banners.length - 1)));
-      },
-      [banners.length, updateActive, width],
-    );
-
-    const renderHero = useCallback(
-      ({ item }: { item: HomeBanner }) => (
-        <Pressable
-          style={[styles.heroSlide, { width, height: heroHeight }]}
-          onPress={() =>
-            item.collectionId
-              ? onCollectionPress(item.collectionId, item.title)
-              : undefined
-          }
-        >
-          <ImageBackground
-            source={{ uri: item.image }}
-            style={styles.heroImage}
-            imageStyle={styles.heroImageStyle}
-          >
-            <View style={styles.heroDimTop} />
-            <View style={styles.heroDimBottom} />
-            <View style={styles.heroCopy}>
-              <Text style={styles.heroEyebrow}>ZARR EDIT</Text>
-              <Text style={styles.heroTitle} numberOfLines={3}>
-                {item.title}
-              </Text>
-              {item.subtitle ? (
-                <Text style={styles.heroSubtitle} numberOfLines={2}>
-                  {item.subtitle}
-                </Text>
-              ) : null}
-              <View style={styles.heroCta}>
-                <Text style={styles.heroCtaText}>{item.cta.toUpperCase()}</Text>
-              </View>
-            </View>
-          </ImageBackground>
-        </Pressable>
-      ),
-      [heroHeight, onCollectionPress, width],
-    );
-
-    if (!banners.length) return null;
-
-    return (
-      <View style={styles.heroWrap}>
-        <FlatList
-          ref={listRef}
-          data={banners}
-          renderItem={renderHero}
-          keyExtractor={(item) => item.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          bounces={false}
-          decelerationRate="fast"
-          onMomentumScrollEnd={onMomentumScrollEnd}
-          getItemLayout={(_, index) => ({
-            length: width,
-            offset: width * index,
-            index,
-          })}
-          onScrollToIndexFailed={({ index }) =>
-            listRef.current?.scrollToOffset({
-              offset: index * width,
-              animated: true,
-            })
-          }
-        />
-        {banners.length > 1 ? (
-          <View style={styles.heroDots}>
-            {banners.map((item, index) => (
-              <View
-                key={item.id}
-                style={[
-                  styles.heroDot,
-                  activeIndex === index && styles.heroDotActive,
-                ]}
-              />
-            ))}
-          </View>
-        ) : null}
-      </View>
-    );
-  },
-);
+// Local HeroCarousel removed in favor of shared robust HeroBanner component
 
 const CategoryRail = memo(
   ({
@@ -629,16 +561,19 @@ const ProductTile = memo(
                 />
               </Animated.View>
             </Pressable>
+
+            {/* Quick Buy Overlay Button */}
+            <Pressable style={styles.quickBuyBtn}>
+              <Ionicons name="cart-outline" size={15} color="#FFFFFF" />
+            </Pressable>
           </View>
 
           <View style={styles.productMeta}>
-            {product.brand ? (
-              <Text style={styles.productBrand} numberOfLines={1}>
-                {product.brand}
-              </Text>
-            ) : null}
+            <Text style={styles.productBrand} numberOfLines={1}>
+              {String(product.brand || 'ZARR SELECT').toUpperCase()}
+            </Text>
             <Text style={styles.productTitle} numberOfLines={2}>
-              {product.title}
+              {String(product.title).toUpperCase()}
             </Text>
             <View style={styles.priceRow}>
               <Text
@@ -738,11 +673,13 @@ const ProductRail = memo(
 
 const TabbedProductRail = memo(
   ({
+    sectionTitle,
     tabs,
     cardWidth,
     onProductPress,
     onSeeAllPress,
   }: {
+    sectionTitle: string;
     tabs: ProductTab[];
     cardWidth: number;
     onProductPress: (productId: string) => void;
@@ -755,7 +692,7 @@ const TabbedProductRail = memo(
 
     return (
       <View style={styles.tabbedRailSection}>
-        <SectionTitle title="Popular Right Now" />
+        <SectionTitle title={sectionTitle} />
         <View style={styles.productTabs}>
           {tabs.map((tab) => {
             const isActive = tab.id === active.id;
@@ -877,21 +814,84 @@ const CampaignBanner = memo(
   },
 );
 
-const OffersStrip = memo(() => {
+const OffersJustForYou = memo(() => {
   const offers = [
-    { icon: 'sparkles-outline' as IconName, title: 'Exclusive Drops' },
-    { icon: 'refresh-outline' as IconName, title: 'Easy Returns' },
-    { icon: 'cube-outline' as IconName, title: 'Free Shipping' },
+    {
+      icon: 'card-outline' as IconName,
+      title: 'JAZZCASH 30% OFF',
+      desc: 'Save up to Rs. 3,000 on mobile wallet checkout.',
+      badge: 'PROMO',
+    },
+    {
+      icon: 'swap-horizontal-outline' as IconName,
+      title: 'FREE & EASY RETURNS',
+      desc: '14-day hassle-free exchange & return policy.',
+      badge: 'SECURE',
+    },
+    {
+      icon: 'gift-outline' as IconName,
+      title: 'FRIDAY SPOTLIGHT',
+      desc: 'Free nationwide shipping on all Friday orders.',
+      badge: 'SHIPPING',
+    },
+    {
+      icon: 'sparkles-outline' as IconName,
+      title: 'EXCLUSIVE DROPS',
+      desc: 'First access to premium luxury designer items.',
+      badge: 'LIMITED',
+    },
   ];
 
   return (
-    <View style={styles.offersSection}>
+    <View style={styles.offersContainer}>
       <SectionTitle title="Offers Just For You" />
-      <View style={styles.offerRow}>
+      <View style={styles.offersGrid}>
         {offers.map((offer) => (
-          <View key={offer.title} style={styles.offerItem}>
-            <Ionicons name={offer.icon} size={20} color="#111111" />
-            <Text style={styles.offerText}>{offer.title}</Text>
+          <View key={offer.title} style={styles.offerCard}>
+            <View style={styles.offerBadge}>
+              <Text style={styles.offerBadgeText}>{offer.badge}</Text>
+            </View>
+            <View style={styles.offerIconWrap}>
+              <Ionicons name={offer.icon} size={24} color="#B7984A" />
+            </View>
+            <Text style={styles.offerTitle}>{offer.title}</Text>
+            <Text style={styles.offerDesc}>{offer.desc}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+});
+
+const BrandMoodBoard = memo(() => {
+  const items = [
+    {
+      image: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?auto=format&fit=crop&w=600&q=80',
+      tag: 'WESTERN SHIRT',
+    },
+    {
+      image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80',
+      tag: 'STREET EDIT',
+    },
+    {
+      image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=600&q=80',
+      tag: 'EASTERN CHIC',
+    },
+    {
+      image: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=600&q=80',
+      tag: 'COUTURÈ',
+    },
+  ];
+
+  return (
+    <View style={styles.moodBoardContainer}>
+      <SectionTitle title="Brand Mood Board" />
+      <View style={styles.moodBoardGrid}>
+        {items.map((item, idx) => (
+          <View key={idx} style={styles.moodBoardItem}>
+            <Image source={{ uri: item.image }} style={styles.moodBoardImage} />
+            <View style={styles.moodBoardOverlay} />
+            <Text style={styles.moodBoardTag}>{item.tag}</Text>
           </View>
         ))}
       </View>
@@ -901,24 +901,160 @@ const OffersStrip = memo(() => {
 
 const LuxuryFooter = memo(() => {
   const [email, setEmail] = useState('');
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+
+  const toggleSection = (section: string) => {
+    setExpandedSection((prev) => (prev === section ? null : section));
+  };
+
+  const handleLinkPress = (link: string) => {
+    switch (link) {
+      case 'FAQs':
+        Linking.openURL('https://zarr.com.pk/pages/faqs').catch((err) =>
+          console.error("Couldn't load page", err),
+        );
+        break;
+      case 'Contact Us':
+        Linking.openURL('https://zarr.com.pk/pages/help').catch((err) =>
+          console.error("Couldn't load page", err),
+        );
+        break;
+      case 'Track Order':
+        Linking.openURL('https://zarr.com.pk/pages/track-order').catch((err) =>
+          console.error("Couldn't load page", err),
+        );
+        break;
+      case 'Delivery, Return & Exchange Policy':
+        Linking.openURL('https://zarr.com.pk/policies/refund-policy').catch((err) =>
+          console.error("Couldn't load page", err),
+        );
+        break;
+      case 'Terms & Conditions':
+        Linking.openURL('https://zarr.com.pk/policies/terms-of-service').catch((err) =>
+          console.error("Couldn't load page", err),
+        );
+        break;
+      case 'Privacy Policy':
+        Linking.openURL('https://zarr.com.pk/policies/privacy-policy').catch((err) =>
+          console.error("Couldn't load page", err),
+        );
+        break;
+      case 'About Us':
+        Linking.openURL('https://zarr.com.pk/pages/about-us').catch((err) =>
+          console.error("Couldn't load page", err),
+        );
+        break;
+      case 'Partner with Us':
+        Linking.openURL('https://zarr.com.pk/pages/join-us').catch((err) =>
+          console.error("Couldn't load page", err),
+        );
+        break;
+      default:
+        Linking.openURL('https://zarr.com.pk/').catch((err) =>
+          console.error("Couldn't load page", err),
+        );
+    }
+  };
+
+  const handleSocialPress = (iconName: string) => {
+    let url = 'https://zarr.com.pk/';
+    if (iconName === 'logo-instagram') {
+      url = 'https://www.instagram.com/zarr.official/';
+    } else if (iconName === 'logo-tiktok') {
+      url = 'https://www.tiktok.com/@itszarrofficial?lang=en';
+    } else if (iconName === 'logo-pinterest') {
+      url = 'https://www.pinterest.com/zarrofficial/';
+    } else if (iconName === 'logo-facebook') {
+      url = 'https://www.facebook.com/zarr.official1';
+    } else if (iconName === 'logo-youtube') {
+      url = 'https://www.youtube.com/@ItsZarrOfficial';
+    } else if (iconName === 'logo-linkedin') {
+      url = 'https://www.linkedin.com/company/zarrofficial/';
+    }
+    Linking.openURL(url).catch((err) => console.error("Couldn't load page", err));
+  };
+
+  const instagramImages = [
+    'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=400&q=80',
+    'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=400&q=80',
+    'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=400&q=80',
+    'https://images.unsplash.com/photo-1492707892479-7bc8d5a4ee93?auto=format&fit=crop&w=400&q=80',
+  ];
 
   return (
     <View style={styles.footer}>
+      {/* Instagram Block */}
+      <View style={styles.instaContainer}>
+        <Text style={styles.instaTitle}>#ZARRSTYLE ON INSTAGRAM</Text>
+        <View style={styles.instaGrid}>
+          {instagramImages.map((uri, idx) => (
+            <Image key={idx} source={{ uri }} style={styles.instaImage} />
+          ))}
+        </View>
+      </View>
+
       <View style={styles.footerBrandWrap}>
         <Text style={styles.footerLogo}>ZARR</Text>
         <Text style={styles.footerTagline}>PAKISTAN'S FINEST FASHION</Text>
       </View>
 
+      {/* Expandable Accordions */}
+      <View style={styles.accordionContainer}>
+        {/* Help Accordion */}
+        <Pressable style={styles.accordionHeader} onPress={() => toggleSection('help')}>
+          <Text style={styles.accordionTitle}>HELP & INFORMATION</Text>
+          <Ionicons
+            name={expandedSection === 'help' ? 'chevron-up-outline' : 'chevron-down-outline'}
+            size={16}
+            color="#FFFFFF"
+          />
+        </Pressable>
+        {expandedSection === 'help' && (
+          <View style={styles.accordionContent}>
+            {HELP_LINKS.map((link) => (
+              <Pressable key={link} onPress={() => handleLinkPress(link)}>
+                <Text style={styles.footerLink}>
+                  {link}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {/* About Accordion */}
+        <Pressable style={styles.accordionHeader} onPress={() => toggleSection('about')}>
+          <Text style={styles.accordionTitle}>ABOUT ZARR</Text>
+          <Ionicons
+            name={expandedSection === 'about' ? 'chevron-up-outline' : 'chevron-down-outline'}
+            size={16}
+            color="#FFFFFF"
+          />
+        </Pressable>
+        {expandedSection === 'about' && (
+          <View style={styles.accordionContent}>
+            {ABOUT_LINKS.map((link) => (
+              <Pressable key={link} onPress={() => handleLinkPress(link)}>
+                <Text style={styles.footerLink}>
+                  {link}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* Newsletter Container */}
       <View style={styles.newsletter}>
         <Text style={styles.newsletterTitle}>LET'S BE EMAIL FRIENDS</Text>
         <Text style={styles.newsletterCopy}>
-          Exclusive deals, insider updates, and first looks at new drops.
+          Exclusive deals, insider updates, and first looks at new drops.{"\n"}No clutter. Just curated goodness.
         </Text>
         <View style={styles.newsletterInputWrap}>
           <TextInput
             value={email}
             onChangeText={setEmail}
-            placeholder="Email*"
+            placeholder="Enter your email address"
             placeholderTextColor="#777777"
             autoCapitalize="none"
             keyboardType="email-address"
@@ -928,37 +1064,35 @@ const LuxuryFooter = memo(() => {
             <Text style={styles.newsletterButtonText}>Sign Up</Text>
           </Pressable>
         </View>
+
+        {/* Gold Terms Checkbox */}
+        <Pressable style={styles.termsRow} onPress={() => setAgreeTerms(!agreeTerms)}>
+          <View style={[styles.checkbox, agreeTerms && styles.checkboxChecked]}>
+            {agreeTerms && <Ionicons name="checkmark" size={10} color="#050505" />}
+          </View>
+          <Text style={styles.termsText}>
+            I have read and agreed to the{" "}
+            <Text
+              style={{ textDecorationLine: 'underline', color: '#B7984A' }}
+              onPress={() => handleLinkPress('Terms & Conditions')}
+            >
+              Terms and Conditions
+            </Text>
+            .
+          </Text>
+        </Pressable>
       </View>
 
-      <View style={styles.footerLinksWrap}>
-        <View style={styles.footerLinkColumn}>
-          <Text style={styles.footerHeading}>Help & Information</Text>
-          {HELP_LINKS.map((link) => (
-            <Text key={link} style={styles.footerLink}>
-              {link}
-            </Text>
-          ))}
-        </View>
-        <View style={styles.footerLinkColumn}>
-          <Text style={styles.footerHeading}>About ZARR</Text>
-          {ABOUT_LINKS.map((link) => (
-            <Text key={link} style={styles.footerLink}>
-              {link}
-            </Text>
-          ))}
-        </View>
-      </View>
-
-      <Text style={styles.footerHeading}>Follow us</Text>
+      <Text style={styles.socialHeader}>FOLLOW US</Text>
       <View style={styles.socialRow}>
         {SOCIAL_ICONS.map((icon) => (
-          <Pressable key={icon} style={styles.socialButton}>
+          <Pressable key={icon} onPress={() => handleSocialPress(icon)} style={styles.socialButton}>
             <Ionicons name={icon} size={17} color="#FFFFFF" />
           </Pressable>
         ))}
       </View>
 
-      <Text style={styles.copyright}>2025 ZARR. All rights reserved.</Text>
+      <Text style={styles.copyright}>© 2025 Jazz, All rights reserved</Text>
     </View>
   );
 });
@@ -1095,6 +1229,28 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
     [featuredProducts, feed.popularMen, feed.popularWomen],
   );
 
+  const saleTabs = useMemo<ProductTab[]>(
+    () => [
+      {
+        id: 'women',
+        label: 'Women',
+        title: 'Women On Sale',
+        subtitle: 'Huge discounts on top women fashion lines.',
+        products: feed.saleWomen?.length ? feed.saleWomen : bestSellers,
+        collectionId: 'women',
+      },
+      {
+        id: 'men',
+        label: 'Men',
+        title: 'Men On Sale',
+        subtitle: 'Unmissable markdowns on men essentials.',
+        products: feed.saleMen?.length ? feed.saleMen : bestSellers,
+        collectionId: 'men',
+      },
+    ],
+    [bestSellers, feed.saleMen, feed.saleWomen],
+  );
+
   const railCardWidth = Math.min(184, Math.max(158, width * 0.44));
   const gridCardWidth = Math.floor((width - 36) / 2);
   const campaignCollections = collections.filter(getCollectionImage);
@@ -1127,10 +1283,23 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
         ) : null}
 
-        <HeroCarousel
+        {/* Premium Search Bar */}
+        <View style={styles.searchBarContainer}>
+          <View style={styles.searchBarInner}>
+            <Ionicons name="search-outline" size={18} color="#777777" style={styles.searchIcon} />
+            <TextInput
+              placeholder="Search brands, style, categories..."
+              placeholderTextColor="#777777"
+              style={styles.searchInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+        </View>
+
+        <HeroBanner
           banners={banners}
-          width={width}
-          onCollectionPress={goCollection}
+          onPress={goCollection}
         />
 
         <FadeInSection delay={40}>
@@ -1141,18 +1310,9 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
           <FeaturedCollections onPress={goCollection} />
         </FadeInSection>
 
-        <FadeInSection delay={100}>
-          <View style={styles.featuredBrandSection}>
-            <SectionTitle
-              title="Featured Brands"
-              subtitle="Discover premium labels and curated designers available on ZARR."
-            />
-            <FeaturedBrands onPress={(brandName) => goCollection(brandName.toLowerCase(), brandName)} />
-          </View>
-        </FadeInSection>
-
         <FadeInSection delay={120}>
           <TabbedProductRail
+            sectionTitle="Popular Right Now"
             tabs={popularTabs}
             cardWidth={railCardWidth}
             onProductPress={goProduct}
@@ -1161,48 +1321,56 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
         </FadeInSection>
 
         <FadeInSection delay={160}>
-          <CampaignBanner
-            collection={campaignCollections[0]}
-            width={width}
-            index={0}
-            onPress={goCollection}
+          <TabbedProductRail
+            sectionTitle="On Sale Right Now"
+            tabs={saleTabs}
+            cardWidth={railCardWidth}
+            onProductPress={goProduct}
+            onSeeAllPress={goCollection}
           />
         </FadeInSection>
 
         <FadeInSection delay={200}>
-          <NewArrivalsGrid
-            products={newArrivals}
-            cardWidth={gridCardWidth}
-            onProductPress={goProduct}
-          />
+          <View style={styles.featuredBrandSection}>
+            <SectionTitle
+              title="Featured Brands"
+              subtitle="Discover premium labels and curated designers available on ZARR."
+            />
+            <FeaturedBrands onPress={(brandName) => goCollection(brandName.toLowerCase(), brandName)} />
+
+            {/* Landscape Promo Banner */}
+            <Pressable
+              style={styles.promoBannerContainer}
+              onPress={() => goCollection('all-products', '50,000+ Products')}
+            >
+              <ImageBackground
+                source={{ uri: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80' }}
+                style={styles.promoBannerBg}
+                imageStyle={styles.promoBannerImg}
+              >
+                <View style={styles.promoBannerOverlay} />
+                <View style={styles.promoBannerContent}>
+                  <Text style={styles.promoBannerEyebrow}>SEASONAL FOCUS</Text>
+                  <Text style={styles.promoBannerTitle}>BUY OVER 50,000+ PRODUCTS</Text>
+                  <Text style={styles.promoBannerSubtitle}>Pakistan's largest designer fashion catalogue at your fingertips.</Text>
+                  <View style={styles.promoBannerCta}>
+                    <Text style={styles.promoBannerCtaText}>EXPLORE ALL</Text>
+                  </View>
+                </View>
+              </ImageBackground>
+            </Pressable>
+          </View>
         </FadeInSection>
 
         <FadeInSection delay={240}>
-          <CampaignBanner
-            collection={campaignCollections[1] ?? campaignCollections[0]}
-            width={width}
-            index={1}
-            onPress={goCollection}
-          />
+          <OffersJustForYou />
         </FadeInSection>
 
         <FadeInSection delay={280}>
-          <ProductRail
-            title="Best Sellers"
-            subtitle="Customer-loved fashion finds from the ZARR marketplace."
-            products={bestSellers}
-            cardWidth={railCardWidth}
-            snap
-            onProductPress={goProduct}
-            onSeeAllPress={() => goCollection('best-sellers', 'Best Sellers')}
-          />
+          <BrandMoodBoard />
         </FadeInSection>
 
-        <FadeInSection delay={320}>
-          <OffersStrip />
-        </FadeInSection>
-
-        <Footer onSignIn={goAccount} />
+        <LuxuryFooter />
       </ScrollView>
 
       <SideMenu
@@ -1225,6 +1393,31 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 0,
+  },
+  searchBarContainer: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E6E6E6',
+  },
+  searchBarInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 40,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#111111',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    padding: 0,
   },
   loadingBar: {
     height: 3,
@@ -1312,94 +1505,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: 'Inter_700Bold',
     fontSize: 8,
-  },
-  heroWrap: {
-    backgroundColor: '#FFFFFF',
-  },
-  heroSlide: {
-    backgroundColor: '#F4F4F4',
-  },
-  heroImage: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  heroImageStyle: {
-    resizeMode: 'cover',
-  },
-  heroDimTop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.04)',
-  },
-  heroDimBottom: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '58%',
-    backgroundColor: 'rgba(0,0,0,0.25)',
-  },
-  heroCopy: {
-    paddingHorizontal: 22,
-    paddingBottom: 36,
-    width: '86%',
-  },
-  heroEyebrow: {
-    color: '#FFFFFF',
-    fontFamily: 'Inter_700Bold',
-    fontSize: 10,
-    letterSpacing: 2.4,
-    marginBottom: 9,
-  },
-  heroTitle: {
-    color: '#FFFFFF',
-    fontFamily: 'Inter_700Bold',
-    fontSize: 36,
-    lineHeight: 39,
-    letterSpacing: 0,
-    textTransform: 'uppercase',
-  },
-  heroSubtitle: {
-    color: '#FFFFFF',
-    fontFamily: 'Inter_400Regular',
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: 10,
-    opacity: 0.95,
-  },
-  heroCta: {
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.72)',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    marginTop: 18,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  heroCtaText: {
-    color: '#FFFFFF',
-    fontFamily: 'Inter_700Bold',
-    fontSize: 12,
-    letterSpacing: 0.6,
-  },
-  heroDots: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  heroDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.58)',
-  },
-  heroDotActive: {
-    width: 22,
-    backgroundColor: '#FFFFFF',
   },
   sectionTitleWrap: {
     alignItems: 'center',
@@ -1693,6 +1798,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.92)',
   },
+  quickBuyBtn: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#333333',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
   productMeta: {
     paddingHorizontal: 9,
     paddingTop: 10,
@@ -1826,28 +1947,235 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
+  promoBannerContainer: {
+    height: 180,
+    marginTop: 18,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  promoBannerBg: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  promoBannerImg: {
+    resizeMode: 'cover',
+  },
+  promoBannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  promoBannerContent: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+  },
+  promoBannerEyebrow: {
+    color: '#B7984A',
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    letterSpacing: 2,
+  },
+  promoBannerTitle: {
+    color: '#FFFFFF',
+    fontFamily: 'PlayfairDisplay_700Bold',
+    fontSize: 20,
+    letterSpacing: 0.5,
+    marginTop: 4,
+  },
+  promoBannerSubtitle: {
+    color: '#EAEAEA',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    marginTop: 4,
+    lineHeight: 15,
+  },
+  promoBannerCta: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 12,
+  },
+  promoBannerCtaText: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter_700Bold',
+    fontSize: 9,
+    letterSpacing: 1,
+  },
+  offersContainer: {
+    paddingVertical: 24,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E6E6E6',
+  },
+  offersGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingHorizontal: 16,
+  },
+  offerCard: {
+    width: '48%',
+    backgroundColor: '#FAF9F6',
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  offerBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: '#EAEAEA',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  offerBadgeText: {
+    fontFamily: 'Inter_700Bold',
+    color: '#333333',
+    fontSize: 7,
+    letterSpacing: 0.5,
+  },
+  offerIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  offerTitle: {
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    color: '#111111',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  offerDesc: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 9,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 12,
+  },
+  moodBoardContainer: {
+    paddingVertical: 24,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E6E6E6',
+  },
+  moodBoardGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    paddingHorizontal: 16,
+  },
+  moodBoardItem: {
+    width: '48%',
+    height: 180,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#F5F5F5',
+  },
+  moodBoardImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  moodBoardOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
+  moodBoardTag: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    color: '#FFFFFF',
+    fontFamily: 'Inter_700Bold',
+    fontSize: 10,
+    letterSpacing: 1.5,
+  },
   footer: {
     backgroundColor: '#050505',
     paddingHorizontal: 18,
     paddingTop: 34,
     paddingBottom: 30,
   },
+  instaContainer: {
+    marginBottom: 30,
+  },
+  instaTitle: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    letterSpacing: 1.5,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  instaGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  instaImage: {
+    flex: 1,
+    aspectRatio: 1,
+    borderRadius: 4,
+    backgroundColor: '#1E1E1E',
+  },
   footerBrandWrap: {
     alignItems: 'center',
     marginBottom: 26,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#262626',
+    paddingBottom: 20,
   },
   footerLogo: {
     color: '#FFFFFF',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'PlayfairDisplay_700Bold',
     fontSize: 28,
     letterSpacing: 7,
   },
   footerTagline: {
-    color: '#BBBBBB',
-    fontFamily: 'Inter_500Medium',
-    fontSize: 9,
+    color: '#B7984A', // Golden branding tagline
+    fontFamily: 'Inter_700Bold',
+    fontSize: 8,
     letterSpacing: 2,
-    marginTop: 8,
+    marginTop: 6,
+  },
+  accordionContainer: {
+    marginBottom: 24,
+  },
+  accordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#262626',
+  },
+  accordionTitle: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    letterSpacing: 1.2,
+  },
+  accordionContent: {
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  footerLink: {
+    color: '#BFBFBF',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    lineHeight: 28,
   },
   newsletter: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -1872,13 +2200,14 @@ const styles = StyleSheet.create({
   },
   newsletterInputWrap: {
     flexDirection: 'row',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: '#555555',
     height: 44,
+    backgroundColor: '#FFFFFF',
   },
   newsletterInput: {
     flex: 1,
-    color: '#FFFFFF',
+    color: '#111111',
     fontFamily: 'Inter_400Regular',
     fontSize: 13,
     paddingHorizontal: 12,
@@ -1888,33 +2217,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
+    borderLeftWidth: 1,
+    borderLeftColor: '#E6E6E6',
   },
   newsletterButtonText: {
     color: '#111111',
     fontFamily: 'Inter_700Bold',
-    fontSize: 12,
+    fontSize: 11,
+    letterSpacing: 0.5,
   },
-  footerLinksWrap: {
+  termsRow: {
     flexDirection: 'row',
-    gap: 22,
-    marginBottom: 22,
+    alignItems: 'center',
+    marginTop: 12,
   },
-  footerLinkColumn: {
-    flex: 1,
+  checkbox: {
+    width: 14,
+    height: 14,
+    borderWidth: 1,
+    borderColor: '#B7984A', // Elegant gold checkbox outline
+    borderRadius: 2,
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  footerHeading: {
+  checkboxChecked: {
+    backgroundColor: '#B7984A',
+  },
+  termsText: {
+    color: '#999999',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+  },
+  socialHeader: {
     color: '#FFFFFF',
     fontFamily: 'Inter_700Bold',
     fontSize: 11,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    marginBottom: 10,
-  },
-  footerLink: {
-    color: '#BFBFBF',
-    fontFamily: 'Inter_400Regular',
-    fontSize: 12,
-    lineHeight: 22,
+    marginBottom: 12,
   },
   socialRow: {
     flexDirection: 'row',
@@ -1932,9 +2273,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   copyright: {
-    color: '#888888',
+    color: '#666666',
     fontFamily: 'Inter_400Regular',
-    fontSize: 11,
+    fontSize: 10,
     textAlign: 'center',
     paddingTop: 4,
   },

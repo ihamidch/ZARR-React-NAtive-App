@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -16,8 +16,6 @@ type Props = {
   onPress?: (handle: string, label: string) => void;
 };
 
-// Small fallback icons mapped to category labels for when the live image
-// hasn't loaded yet (or in case a future store has a type with no image).
 const FALLBACK_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   women: 'woman-outline',
   men: 'man-outline',
@@ -36,6 +34,7 @@ const FALLBACK_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 
 export const ShopByType = ({ onPress }: Props) => {
   const { data, status } = useCategoryShortcuts();
+  const [activeTab, setActiveTab] = useState<'women' | 'men' | 'kids'>('women');
 
   if (status === 'loading' && !data.length) {
     return (
@@ -47,69 +46,157 @@ export const ShopByType = ({ onPress }: Props) => {
 
   if (!data.length) return null;
 
+  const filteredData = data.filter((item) => {
+    const id = item.id.toLowerCase();
+    if (activeTab === 'women') {
+      // Exclude pure men and kids shortcuts, show all women-focused/neutral items
+      return id !== 'men' && id !== 'kids';
+    } else if (activeTab === 'men') {
+      return id === 'men' || id === 'western' || id === 'eastern' || id === 'accessories' || id === 'sale';
+    } else {
+      return id === 'kids' || id === 'sale';
+    }
+  });
+
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.row}
-    >
-      {data.map((type) => {
-        const iconName = FALLBACK_ICONS[type.id] || 'pricetag-outline';
-        return (
-          <Pressable
-            key={type.id}
-            onPress={() => onPress?.(type.handle, type.label)}
-            style={({ pressed }) => [
-              styles.item,
-              pressed && { transform: [{ scale: 0.94 }] },
-            ]}
-          >
-            <View style={styles.imageWrap}>
-              {type.image ? (
-                <>
-                  <Image source={{ uri: type.image }} style={styles.image} />
-                  {/* Subtle tint to de-emphasize cut-off text in banners */}
-                  <View style={styles.imageTint} />
-                </>
-              ) : (
-                <View style={styles.imageFallback}>
-                  <Ionicons name={iconName} size={26} color={colors.gold} />
-                </View>
-              )}
-              <View style={styles.ring} />
-            </View>
-            <Text style={styles.label} numberOfLines={1}>
-              {type.label}
-            </Text>
-            {typeof type.productsCount === 'number' && type.productsCount > 0 ? (
-              <Text style={styles.count} numberOfLines={1}>
-                {type.productsCount > 999
-                  ? `${(type.productsCount / 1000).toFixed(1)}k`
-                  : type.productsCount} items
+    <View style={styles.sectionContainer}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>SHOP BY CATEGORY</Text>
+      </View>
+
+      {/* Interactive Tabs */}
+      <View style={styles.tabRow}>
+        {(['women', 'men', 'kids'] as const).map((tab) => {
+          const isActive = activeTab === tab;
+          return (
+            <Pressable
+              key={tab}
+              style={[styles.tabButton, isActive && styles.tabButtonActive]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                {tab.toUpperCase()}
               </Text>
-            ) : null}
-          </Pressable>
-        );
-      })}
-    </ScrollView>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.row}
+      >
+        {filteredData.map((type) => {
+          const iconName = FALLBACK_ICONS[type.id] || 'pricetag-outline';
+          return (
+            <Pressable
+              key={type.id}
+              onPress={() => onPress?.(type.handle, type.label)}
+              style={({ pressed }) => [
+                styles.item,
+                pressed && { transform: [{ scale: 0.94 }] },
+              ]}
+            >
+              <View style={styles.imageWrap}>
+                {type.image ? (
+                  <>
+                    <Image source={{ uri: type.image }} style={styles.image} />
+                    <View style={styles.imageTint} />
+                  </>
+                ) : (
+                  <View style={styles.imageFallback}>
+                    <Ionicons name={iconName} size={26} color={colors.gold} />
+                  </View>
+                )}
+                <View style={styles.ring} />
+              </View>
+              <Text style={styles.label} numberOfLines={2}>
+                {type.label}
+              </Text>
+              {typeof type.productsCount === 'number' && type.productsCount > 0 ? (
+                <Text style={styles.count} numberOfLines={1}>
+                  {type.productsCount > 999
+                    ? `${(type.productsCount / 1000).toFixed(1)}k`
+                    : type.productsCount} items
+                </Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 };
 
-const ITEM_SIZE = 76; // Slightly smaller for more refined look
+const ITEM_SIZE = 72;
 
 const styles = StyleSheet.create({
+  sectionContainer: {
+    backgroundColor: '#F5F5F7', // Cool-toned grey textured background
+    paddingVertical: 24,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E6E6E6',
+  },
+  sectionHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontFamily: 'PlayfairDisplay_700Bold', // Premium Serif header style
+    fontSize: 22,
+    letterSpacing: 1.5,
+    color: '#111111',
+  },
+  tabRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 20,
+    paddingHorizontal: 16,
+  },
+  tabButton: {
+    minWidth: 88,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: '#DADADA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  tabButtonActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#111111',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabText: {
+    fontFamily: 'Inter_500Medium',
+    color: '#666666',
+    fontSize: 12,
+    letterSpacing: 0.8,
+  },
+  tabTextActive: {
+    color: '#111111',
+    fontFamily: 'Inter_700Bold',
+  },
   row: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    gap: spacing.md,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   loading: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
+    paddingVertical: 30,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F5F5F7',
   },
   item: {
-    width: ITEM_SIZE + 12,
+    width: ITEM_SIZE + 14,
     alignItems: 'center',
   },
   imageWrap: {
@@ -117,9 +204,10 @@ const styles = StyleSheet.create({
     height: ITEM_SIZE,
     borderRadius: ITEM_SIZE / 2,
     overflow: 'hidden',
-    backgroundColor: colors.surface,
-    ...shadows.soft,
-    marginBottom: spacing.sm,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
   },
   image: {
     width: '100%',
@@ -128,34 +216,34 @@ const styles = StyleSheet.create({
   },
   imageTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: 'rgba(0,0,0,0.02)',
   },
   imageFallback: {
     width: '100%',
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: '#FFFFFF',
   },
   ring: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: ITEM_SIZE / 2,
-    borderWidth: 1,
-    borderColor: colors.borderStrong, // More subtle elegant ring
+    borderWidth: 1.5,
+    borderColor: 'transparent',
   },
   label: {
-    fontFamily: 'Inter_500Medium',
-    color: colors.text,
-    fontSize: 11,
-    letterSpacing: 1,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#111111',
+    fontSize: 10,
+    letterSpacing: 0.4,
     textAlign: 'center',
-    textTransform: 'uppercase', // Fashion standard uppercase
+    textTransform: 'uppercase',
+    minHeight: 28,
   },
   count: {
-    ...typography.tiny,
-    color: colors.textMuted,
-    fontSize: 10,
-    letterSpacing: 0.5,
+    color: '#777777',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 9,
     marginTop: 2,
     opacity: 0.8,
   },

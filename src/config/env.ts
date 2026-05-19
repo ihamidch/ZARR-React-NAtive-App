@@ -34,4 +34,6 @@ function defaultBaseUrl(): string {
 }
 
 export const API_BASE_URL: string =
-  (typeof fromExpoConfig === 'string' && fromExpoConfig) || defaultBaseUrl();
+  __DEV__
+    ? defaultBaseUrl()
+    : (typeof fromExpoConfig === 'string' && fromExpoConfig) || defaultBaseUrl();
