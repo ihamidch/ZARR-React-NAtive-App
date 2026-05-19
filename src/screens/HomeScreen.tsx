@@ -183,37 +183,10 @@ const STATIC_HERO_BANNERS: HomeBanner[] = [
 ];
 
 const normalizeBanners = (
-  feed: HomeFeedShape,
-  collections: Collection[],
-  products: Product[],
-): HomeBanner[] => {
-  const rawBanners = Array.isArray(feed.banners) ? feed.banners : [];
-
-  const fromFeed = rawBanners
-    .map((banner, index) => {
-      const image = firstString(
-        banner.bannerImage,
-        banner.desktopImage,
-        banner.mobileImage,
-        banner.image,
-      );
-      if (!image) return null;
-
-      return {
-        id: firstString(banner.id, banner.handle, `banner-${index}`),
-        title: firstString(banner.title, banner.headline, 'ZARR'),
-        subtitle: firstString(banner.subtitle, banner.description),
-        cta: firstString(banner.cta, banner.buttonText, 'Shop Now'),
-        image,
-        collectionId: firstString(banner.collectionId, banner.handle),
-      };
-    })
-    .filter(Boolean) as HomeBanner[];
-
-  if (fromFeed.length) return fromFeed;
-
-  return STATIC_HERO_BANNERS;
-};
+  _feed: HomeFeedShape,
+  _collections: Collection[],
+  _products: Product[],
+): HomeBanner[] => STATIC_HERO_BANNERS;
 
 const FadeInSection = memo(
   ({
