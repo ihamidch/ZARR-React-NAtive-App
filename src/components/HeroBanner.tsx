@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '60%',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.15)',
   },
   content: {
     padding: spacing.xl,

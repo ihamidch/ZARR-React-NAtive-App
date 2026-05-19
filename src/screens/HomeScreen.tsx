@@ -146,39 +146,35 @@ const getCollectionImage = (collection: Collection) =>
 const STATIC_HERO_BANNERS: HomeBanner[] = [
   {
     id: 'static-hero-1',
-    title: 'La Toscana',
-    subtitle:
-      'A romantic edit inspired by Tuscan summers — soft silhouettes, sun-washed tones, and effortless drape.',
+    title: 'Premium Collection',
+    subtitle: 'Discover elegant fashion curated for you',
     cta: 'Shop Now',
     image:
-      'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1600&q=80',
+      'https://images.unsplash.com/photo-1552062407-291826ad9542?auto=format&fit=crop&w=1600&q=90',
   },
   {
     id: 'static-hero-2',
-    title: "Mahay Spring '26",
-    subtitle:
-      'Fresh florals and airy lawn pieces — the lightweight everyday wardrobe for spring.',
+    title: 'Spring Arrivals',
+    subtitle: 'Fresh styles for the season ahead',
     cta: 'Shop Now',
     image:
-      'https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=1600&q=80',
+      'https://images.unsplash.com/photo-1539613080033-0da6ca226e15?auto=format&fit=crop&w=1600&q=90',
   },
   {
     id: 'static-hero-3',
-    title: "Luxury Lawn '26",
-    subtitle:
-      'Premium lawn fabrics with hand-embroidered detailing for elevated daily wear.',
+    title: 'Luxury Edit',
+    subtitle: 'Timeless pieces with modern appeal',
     cta: 'Shop Now',
     image:
-      'https://images.unsplash.com/photo-1542295669297-4d352b042bca?auto=format&fit=crop&w=1600&q=80',
+      'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=1600&q=90',
   },
   {
     id: 'static-hero-4',
-    title: "Muzlin '26",
-    subtitle:
-      'Woven muzlin three-piece suits with refined embellishment for festive occasions.',
+    title: 'Elegant Styles',
+    subtitle: 'Premium fabrics and refined design',
     cta: 'Shop Now',
     image:
-      'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1600&q=80',
+      'https://images.unsplash.com/photo-1564377728107-b1a3c17f05c7?auto=format&fit=crop&w=1600&q=90',
   },
 ];
 
@@ -1340,7 +1336,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: '58%',
-    backgroundColor: 'rgba(0,0,0,0.42)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
   heroCopy: {
     paddingHorizontal: 22,
@@ -1533,7 +1529,7 @@ const styles = StyleSheet.create({
   },
   collectionOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.22)',
+    backgroundColor: 'rgba(0,0,0,0.08)',
   },
   collectionCopy: {
     padding: 13,
@@ -1756,7 +1752,7 @@ const styles = StyleSheet.create({
   },
   campaignOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.36)',
+    backgroundColor: 'rgba(0,0,0,0.12)',
   },
   campaignCopy: {
     paddingHorizontal: 18,

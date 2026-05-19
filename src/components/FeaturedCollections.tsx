@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '60%',
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: 'rgba(0,0,0,0.02)',
   },
   gradientBottomDeep: {
     position: 'absolute',
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '40%',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.03)',
   },
   contentOverlay: {
     flex: 1,

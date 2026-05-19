@@ -86,10 +86,6 @@ export const CategoryGrid = ({ onPress }: Props) => {
               <View style={styles.overlayTop} />
               <View style={styles.overlayBottom} />
               <View style={styles.labelWrap}>
-                <View style={styles.eyebrowRow}>
-                  <View style={styles.eyebrowLine} />
-                  <Text style={styles.eyebrow}>SHOP</Text>
-                </View>
                 <Text style={styles.labelSmall}>{cat.title}</Text>
               </View>
             </ImageBackground>
@@ -123,10 +119,14 @@ const styles = StyleSheet.create({
   cardSmall: {
     flex: 1,
     height: 190,
+    borderRadius: 95,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   image: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   imageStyle: {
     resizeMode: 'cover',
@@ -145,15 +145,17 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '65%',
-    backgroundColor: 'rgba(0,0,0,0.48)',
+    backgroundColor: 'rgba(0,0,0,0.15)',
   },
   labelWrap: {
     padding: spacing.lg,
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   eyebrowRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     marginBottom: 6,
   },
@@ -176,7 +178,8 @@ const styles = StyleSheet.create({
   labelSmall: {
     ...typography.h1,
     color: colors.white,
-    fontSize: 22,
+    fontSize: 14,
     textTransform: 'capitalize',
+    textAlign: 'center',
   },
 });
