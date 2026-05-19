@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -28,6 +28,25 @@ const helpLinks = [
 ];
 
 const aboutLinks = ['About Us', 'Partner with Us'];
+const contactEmail = 'hello@zarr.pk';
+
+const linkTargets: Record<string, string> = {
+  FAQs: 'https://www.zarr.pk/',
+  'Contact Us': 'https://www.zarr.pk/pages/contact-us',
+  'Track Order': 'https://www.zarr.pk/pages/track-order',
+  'Delivery, Return & Exchange Policy':
+    'https://www.zarr.pk/pages/delivery-return-exchange-policy',
+  'Terms & Conditions': 'https://www.zarr.pk/pages/terms-conditions',
+  'Privacy Policy': 'https://www.zarr.pk/pages/privacy-policy',
+  'About Us': 'https://www.zarr.pk/pages/about-us',
+  'Partner with Us': 'https://www.zarr.pk/pages/partner-with-us',
+};
+
+type FooterProps = {
+  onSignIn?: () => void;
+};
+
+const aboutLinks = ['About Us', 'Partner with Us'];
 
 const socials: Array<keyof typeof Ionicons.glyphMap> = [
   'logo-instagram',
@@ -37,9 +56,36 @@ const socials: Array<keyof typeof Ionicons.glyphMap> = [
   'logo-twitter',
 ];
 
-export const Footer = () => {
+export const Footer = ({ onSignIn }: FooterProps) => {
   const [email, setEmail] = useState('');
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+
+  const openUrl = useCallback(async (url: string) => {
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      }
+    } catch {
+      // ignore broken links for now
+    }
+  }, []);
+
+  const handleNewsletterSubmit = useCallback(() => {
+    const trimmed = email.trim();
+    const mailto = trimmed
+      ? `mailto:${contactEmail}?subject=${encodeURIComponent(
+          'Subscribe to ZARR Newsletter',
+        )}&body=${encodeURIComponent(
+          `Hi ZARR team,%0D%0A%0D%0AI would like to subscribe to your newsletter with this email address:%0D%0A${trimmed}`,
+        )}`
+      : `mailto:${contactEmail}`;
+
+    openUrl(mailto);
+    if (trimmed) {
+      setEmail('');
+    }
+  }, [email, openUrl]);
 
   const toggleSection = (section: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -52,6 +98,23 @@ export const Footer = () => {
         <Text style={styles.brand}>ZARR</Text>
         <View style={styles.brandUnderline} />
         <Text style={styles.brandTag}>PAKISTAN'S FINEST FASHION</Text>
+      </View>
+
+      <View style={styles.signInRow}>
+        <Text style={styles.signInText}>Already have an account?</Text>
+        <Pressable
+          style={styles.signInButton}
+          onPress={onSignIn ?? (() => openUrl('https://www.zarr.pk/account'))}
+        >
+          <Text style={styles.signInButtonText}>SIGN IN</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.contactRow}>
+        <Text style={styles.contactLabel}>Have a question?</Text>
+        <Pressable onPress={() => openUrl(`mailto:${contactEmail}`)}>
+          <Text style={styles.contactLink}>{contactEmail}</Text>
+        </Pressable>
       </View>
 
       <View style={styles.newsletter}>
@@ -70,7 +133,7 @@ export const Footer = () => {
             keyboardType="email-address"
             autoCapitalize="none"
           />
-          <Pressable style={styles.signupBtn}>
+          <Pressable style={styles.signupBtn} onPress={handleNewsletterSubmit}>
             <Text style={styles.signupText}>SIGN UP</Text>
           </Pressable>
         </View>
@@ -90,7 +153,7 @@ export const Footer = () => {
         >
           <Text style={styles.sectionTitle}>HELP & INFORMATION</Text>
           <Ionicons 
-            name={expandedSection === 'help' ? "remove" : "add"} 
+            name={expandedSection === 'help' ? 'remove' : 'add'} 
             size={20} 
             color={colors.white} 
           />
@@ -99,12 +162,11 @@ export const Footer = () => {
         {expandedSection === 'help' && (
           <View style={styles.accordionContent}>
             {helpLinks.map((l) => (
-              <Pressable 
+              <Pressable
                 key={l}
                 onPress={() => {
-                  if (l === 'FAQs') {
-                    Linking.openURL('https://zarr.com.pk/');
-                  }
+                  const url = linkTargets[l];
+                  if (url) openUrl(url);
                 }}
               >
                 <Text style={styles.link}>{l}</Text>
@@ -122,7 +184,7 @@ export const Footer = () => {
         >
           <Text style={styles.sectionTitle}>ABOUT ZARR</Text>
           <Ionicons 
-            name={expandedSection === 'about' ? "remove" : "add"} 
+            name={expandedSection === 'about' ? 'remove' : 'add'} 
             size={20} 
             color={colors.white} 
           />
@@ -131,7 +193,7 @@ export const Footer = () => {
         {expandedSection === 'about' && (
           <View style={styles.accordionContent}>
             {aboutLinks.map((l) => (
-              <Pressable key={l}>
+              <Pressable key={l} onPress={() => openUrl(linkTargets[l])}>
                 <Text style={styles.link}>{l}</Text>
               </Pressable>
             ))}
@@ -156,7 +218,8 @@ export const Footer = () => {
     </View>
   );
 };
-const styles = StyleSheet.create({
+
+const styles = StyleSheet.create({
   wrapper: {
     backgroundColor: '#000000', // Black footer
     paddingTop: spacing.xxl,
@@ -183,6 +246,43 @@ export const Footer = () => {
     color: '#999999',
     marginTop: spacing.sm,
     letterSpacing: 4,
+  },
+  signInRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  signInText: {
+    ...typography.small,
+    color: '#DDDDDD',
+  },
+  signInButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.white,
+    borderRadius: radius.sm,
+  },
+  signInButtonText: {
+    ...typography.small,
+    color: colors.black,
+    fontFamily: 'Inter_700Bold',
+  },
+  contactRow: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  contactLabel: {
+    ...typography.small,
+    color: '#AAAAAA',
+    marginBottom: spacing.xs,
+  },
+  contactLink: {
+    ...typography.small,
+    color: colors.white,
+    textDecorationLine: 'underline',
   },
   newsletter: {
     backgroundColor: '#111111',
@@ -298,4 +398,4 @@ export const Footer = () => {
     color: '#666666',
     letterSpacing: 1,
   },
-});
+});

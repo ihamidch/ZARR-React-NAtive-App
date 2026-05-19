@@ -29,20 +29,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  categories as fallbackCategories,
-  featuredCollections as fallbackCollections,
-  formatPrice,
-} from '../data';
+import { formatPrice } from '../data';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import {
-  useCategoryShortcuts,
   useCollections,
   useHomeFeed,
 } from '../hooks/useProducts';
 import type { HomeScreenProps } from '../types/navigation';
-import type { CategoryCard, Collection, Product } from '../types';
+import type { Collection, Product } from '../types';
+import { FeaturedBrands } from '../components/FeaturedBrands';
+import { FeaturedCollections } from '../components/FeaturedCollections';
+import { Footer } from '../components/Footer';
+import { ShopByType } from '../components/ShopByType';
 import { SideMenu } from '../components/SideMenu';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -510,7 +509,7 @@ const CategoryRail = memo(
       <View style={styles.categorySection}>
         <SectionTitle title="Shop By Category" />
         <View style={styles.categoryTabs}>
-          {fallbackCategories.map((category, index) => (
+          {categories.map((category, index) => (
             <Pressable
               key={category.id}
               style={[
@@ -568,65 +567,7 @@ const CategoryRail = memo(
   },
 );
 
-const FeaturedCollectionsRail = memo(
-  ({
-    collections,
-    onPress,
-  }: {
-    collections: Collection[];
-    onPress: (collectionId: string, title: string) => void;
-  }) => {
-    const visibleCollections = collections.filter((collection) =>
-      firstString(collection.image, collection.bannerImage),
-    );
 
-    if (!visibleCollections.length) return null;
-
-    return (
-      <View style={styles.featuredCollectionsSection}>
-        <SectionTitle title="Featured Collections" />
-        <FlatList
-          data={visibleCollections}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.collectionRail}
-          initialNumToRender={5}
-          maxToRenderPerBatch={5}
-          windowSize={4}
-          removeClippedSubviews
-          renderItem={({ item }) => (
-            <Pressable
-              style={({ pressed }) => [
-                styles.collectionCard,
-                pressed && styles.pressedItem,
-              ]}
-              onPress={() => onPress(item.id, item.title)}
-            >
-              <ImageBackground
-                source={{ uri: firstString(item.image, item.bannerImage) }}
-                style={styles.collectionImage}
-                imageStyle={styles.collectionImageStyle}
-              >
-                <View style={styles.collectionOverlay} />
-                <View style={styles.collectionCopy}>
-                  {item.brand ? (
-                    <Text style={styles.collectionBrand} numberOfLines={1}>
-                      {item.brand}
-                    </Text>
-                  ) : null}
-                  <Text style={styles.collectionTitle} numberOfLines={2}>
-                    {item.title}
-                  </Text>
-                </View>
-              </ImageBackground>
-            </Pressable>
-          )}
-        />
-      </View>
-    );
-  },
-);
 
 const ProductTile = memo(
   ({
@@ -1045,7 +986,6 @@ const LuxuryFooter = memo(() => {
 export const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const { data, status, refresh } = useHomeFeed();
   const { data: liveCollections } = useCollections();
-  const { data: shortcutData } = useCategoryShortcuts();
   const { isAuthenticated } = useAuth();
   const { width } = useWindowDimensions();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -1078,7 +1018,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
       return feed.collections;
     }
     if (liveCollections.length) return liveCollections;
-    return fallbackCollections;
+    return [];
   }, [feed.collections, liveCollections]);
 
   const allFetchedProducts = useMemo(
@@ -1144,33 +1084,6 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
     () => normalizeBanners(feed, collections, allFetchedProducts),
     [allFetchedProducts, collections, feed],
   );
-
-  const categories = useMemo<CategoryItem[]>(() => {
-    if (shortcutData.length) {
-      return shortcutData.map((item) => ({
-        id: item.handle,
-        title: item.label,
-        image: item.image,
-      }));
-    }
-
-    const collectionCategories = collections
-      .filter((collection) => collection.image)
-      .slice(0, 10)
-      .map((collection) => ({
-        id: collection.id,
-        title: collection.title,
-        image: collection.image,
-      }));
-
-    if (collectionCategories.length) return collectionCategories;
-
-    return fallbackCategories.map((category: CategoryCard) => ({
-      id: category.id,
-      title: category.title,
-      image: category.image,
-    }));
-  }, [collections, shortcutData]);
 
   const popularTabs = useMemo<ProductTab[]>(
     () => [
@@ -1241,14 +1154,21 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
         />
 
         <FadeInSection delay={40}>
-          <CategoryRail categories={categories} onPress={goCollection} />
+          <ShopByType onPress={goCollection} />
         </FadeInSection>
 
         <FadeInSection delay={80}>
-          <FeaturedCollectionsRail
-            collections={collections}
-            onPress={goCollection}
-          />
+          <FeaturedCollections onPress={goCollection} />
+        </FadeInSection>
+
+        <FadeInSection delay={100}>
+          <View style={styles.featuredBrandSection}>
+            <SectionTitle
+              title="Featured Brands"
+              subtitle="Discover premium labels and curated designers available on ZARR."
+            />
+            <FeaturedBrands onPress={(brandName) => goCollection(brandName.toLowerCase(), brandName)} />
+          </View>
         </FadeInSection>
 
         <FadeInSection delay={120}>
@@ -1302,7 +1222,7 @@ export const HomeScreen = ({ navigation }: HomeScreenProps) => {
           <OffersStrip />
         </FadeInSection>
 
-        <LuxuryFooter />
+        <Footer onSignIn={goAccount} />
       </ScrollView>
 
       <SideMenu
@@ -1651,6 +1571,11 @@ const styles = StyleSheet.create({
   tabbedRailSection: {
     paddingBottom: 4,
     backgroundColor: '#FFFFFF',
+  },
+  featuredBrandSection: {
+    paddingHorizontal: 18,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 18,
   },
   productTabs: {
     flexDirection: 'row',
