@@ -153,10 +153,10 @@ const normalizeBanners = (
   const fromFeed = rawBanners
     .map((banner, index) => {
       const image = firstString(
-        banner.mobileImage,
-        banner.image,
         banner.bannerImage,
         banner.desktopImage,
+        banner.mobileImage,
+        banner.image,
       );
       if (!image) return null;
 
