@@ -46,8 +46,6 @@ type FooterProps = {
   onSignIn?: () => void;
 };
 
-const aboutLinks = ['About Us', 'Partner with Us'];
-
 const socials: Array<keyof typeof Ionicons.glyphMap> = [
   'logo-instagram',
   'logo-facebook',
