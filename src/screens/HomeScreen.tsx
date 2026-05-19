@@ -143,6 +143,45 @@ const dedupeProducts = (products: Product[]) => {
 const getCollectionImage = (collection: Collection) =>
   firstString(collection.bannerImage, collection.image);
 
+const STATIC_HERO_BANNERS: HomeBanner[] = [
+  {
+    id: 'static-hero-1',
+    title: 'La Toscana',
+    subtitle:
+      'A romantic edit inspired by Tuscan summers — soft silhouettes, sun-washed tones, and effortless drape.',
+    cta: 'Shop Now',
+    image:
+      'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1600&q=80',
+  },
+  {
+    id: 'static-hero-2',
+    title: "Mahay Spring '26",
+    subtitle:
+      'Fresh florals and airy lawn pieces — the lightweight everyday wardrobe for spring.',
+    cta: 'Shop Now',
+    image:
+      'https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=1600&q=80',
+  },
+  {
+    id: 'static-hero-3',
+    title: "Luxury Lawn '26",
+    subtitle:
+      'Premium lawn fabrics with hand-embroidered detailing for elevated daily wear.',
+    cta: 'Shop Now',
+    image:
+      'https://images.unsplash.com/photo-1542295669297-4d352b042bca?auto=format&fit=crop&w=1600&q=80',
+  },
+  {
+    id: 'static-hero-4',
+    title: "Muzlin '26",
+    subtitle:
+      'Woven muzlin three-piece suits with refined embellishment for festive occasions.',
+    cta: 'Shop Now',
+    image:
+      'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1600&q=80',
+  },
+];
+
 const normalizeBanners = (
   feed: HomeFeedShape,
   collections: Collection[],
@@ -173,35 +212,7 @@ const normalizeBanners = (
 
   if (fromFeed.length) return fromFeed;
 
-  const fromCollections = collections
-    .map((collection, index) => {
-      const image = getCollectionImage(collection);
-      if (!image) return null;
-
-      return {
-        id: `collection-banner-${collection.id || index}`,
-        title: collection.title,
-        subtitle: collection.description,
-        cta: 'Shop Now',
-        image,
-        collectionId: collection.id,
-      };
-    })
-    .filter(Boolean) as HomeBanner[];
-
-  if (fromCollections.length) return fromCollections.slice(0, 5);
-
-  return products
-    .filter((product) => product.image)
-    .slice(0, 4)
-    .map((product) => ({
-      id: `product-banner-${product.id}`,
-      title: product.title,
-      subtitle: product.brand,
-      cta: 'Shop Now',
-      image: product.image,
-      collectionId: product.collectionId,
-    }));
+  return STATIC_HERO_BANNERS;
 };
 
 const FadeInSection = memo(
